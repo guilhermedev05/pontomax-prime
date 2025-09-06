@@ -1,0 +1,157 @@
+/* PontoMax - Estilos Específicos da Página "Meus Registros" */
+
+/* Card principal que engloba tudo */
+.main-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* --- Seção de Filtros --- */
+.filters-container {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.filters-container .form-group {
+    max-width: 320px;
+}
+
+.input-with-button {
+    display: flex;
+    align-items: center;
+}
+
+.input-with-button input {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+}
+
+.input-with-button .btn-primary {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    height: auto; /* Ajusta a altura ao input */
+    padding: 0.75rem 1rem;
+}
+
+
+/* --- Tabela de Registros --- */
+.records-table-wrapper {
+    width: 100%;
+    overflow-x: auto; /* Garante que a tabela seja rolável em telas pequenas */
+}
+
+.records-table-detailed {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.records-table-detailed th,
+.records-table-detailed td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.records-table-detailed th {
+    color: var(--muted-foreground);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.records-table-detailed td {
+    color: var(--foreground);
+    font-weight: 500;
+}
+
+.date-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.day-of-week {
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.full-date {
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+}
+
+.positive { color: var(--success); }
+.negative { color: var(--danger); }
+
+/* Badge de Status */
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.status-badge.status-aberto {
+    background-color: hsl(217, 91%, 60%, 0.1); /* primary com 10% de opacidade */
+    color: var(--primary);
+}
+
+.status-badge.status-fechado {
+    background-color: hsl(215, 16%, 47%, 0.1); /* secondary com 10% de opacidade */
+    color: var(--secondary);
+}
+
+
+/* --- Resumo do Período --- */
+.period-summary {
+    background-color: var(--background);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+}
+
+.summary-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    text-align: center;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-value {
+    font-size: 1.875rem; /* 30px */
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.summary-label {
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+}
+
+
+/* --- Responsividade --- */
+@media (max-width: 768px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}

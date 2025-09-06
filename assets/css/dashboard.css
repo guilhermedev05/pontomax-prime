@@ -1,0 +1,179 @@
+/* PontoMax - Estilos Específicos do Dashboard */
+
+/* ==========================================================================
+   Layout Principal da Página do Dashboard
+   ========================================================================== */
+
+#dashboard-page.active { /* <--- CORREÇÃO: Adicionado .active */
+    /* Herda a maior parte dos estilos de .content-page em styles.css */
+    /* Adicionamos o espaçamento entre os blocos principais */
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* 24px */
+}
+/* Ajuste no cabeçalho da página para corresponder ao Figma */
+#dashboard-page .page-header {
+    margin-bottom: 0; /* Remove a margem inferior padrão para controlar pelo gap */
+}
+
+#dashboard-page .page-header h1 {
+    font-size: 2.25rem; /* 36px - Maior que o padrão */
+    font-weight: 700;
+}
+
+#dashboard-page .page-header p {
+    font-size: 1rem; /* 16px */
+    color: var(--muted-foreground);
+}
+
+
+/* ==========================================================================
+   Card Principal do Relógio
+   ========================================================================== */
+
+.main-clock-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 2rem; /* 32px */
+    text-align: center;
+    box-shadow: var(--shadow-md);
+}
+
+.time-display-large {
+    font-size: 4.5rem; /* 72px */
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    color: var(--foreground);
+    line-height: 1.1;
+}
+
+.time-label {
+    color: var(--muted-foreground);
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem; /* 24px */
+}
+
+/* O botão #punch-btn já usa a classe .btn-primary de components.css */
+/* Podemos adicionar um tamanho mínimo se necessário */
+#punch-btn {
+    min-width: 200px;
+}
+
+
+/* ==========================================================================
+   Grid de Informações e Cards
+   ========================================================================== */
+
+/* Sobrescreve o grid padrão para garantir 3 colunas em telas maiores */
+.dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 0;
+}
+
+/* Ajusta os cards do grid para o design do Figma */
+.dashboard-grid .card {
+    /* A classe .card de components.css já fornece a base */
+    padding: 1.5rem;
+}
+
+/* Ajusta o tamanho da fonte dos stats para o design */
+.dashboard-grid .stat-value {
+    font-size: 2.25rem; /* 36px */
+    font-weight: 700;
+}
+
+
+/* ==========================================================================
+   Card de Registros de Hoje (Timeline)
+   ========================================================================== */
+
+.today-records-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.today-records-card h2 {
+    font-size: 1.25rem; /* 20px */
+    font-weight: 600;
+    margin: 0;
+}
+
+.today-records-card p {
+    color: var(--muted-foreground);
+    margin-top: 0.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.records-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* 16px */
+}
+
+.timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Conector visual da timeline (ponto azul) */
+.timeline-dot {
+    width: 0.75rem; /* 12px */
+    height: 0.75rem;
+    background-color: var(--primary);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.timeline-content {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: baseline;
+}
+
+.timeline-label {
+    font-weight: 500;
+    color: var(--muted-foreground);
+}
+
+.timeline-time {
+    font-weight: 500;
+    color: var(--foreground);
+    font-variant-numeric: tabular-nums; /* Mantém os números alinhados */
+}
+
+.no-records {
+    color: var(--muted-foreground);
+    font-style: italic;
+    font-size: 0.875rem;
+}
+
+
+/* ==========================================================================
+   Responsividade
+   ========================================================================== */
+
+@media (max-width: 992px) {
+    /* Em telas médias, o grid pode ter 2 colunas */
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    /* Em telas pequenas, o grid vira uma coluna só */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .time-display-large {
+        font-size: 3rem; /* Diminui a fonte do relógio */
+    }
+
+    #dashboard-page .page-header h1 {
+        font-size: 1.875rem; /* Diminui o "Olá, Usuário!" */
+    }
+}

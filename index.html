@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PontoMax - Sistema de Controle de Ponto</title>
+    <meta name="description" content="Sistema completo de controle de ponto eletrônico para empresas">
+    <link rel="shortcut icon" href="assets/images/logo.svg" type="image/x-icon">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link href="https://unpkg.com/lucide@latest/dist/umd/lucide.js" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/registros.css">
+    <link rel="stylesheet" href="assets/css/holerite.css">
+    <link rel="stylesheet" href="assets/css/gestor.css">
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="loading-screen">
+        <div class="loading-content">
+            <div class="logo-container">
+                <div class="logo">P</div>
+            </div>
+            <h1>PontoMax</h1>
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <!-- Login Page -->
+    <div id="login-page" class="page hidden">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="logo-circle">
+                    <img src="assets/images/logo.svg" alt="">
+                </div>
+                <h1>PontoMax</h1>
+                <p>Sistema de Controle de Ponto</p>
+            </div>
+
+            <div class="login-card">
+                <div class="card-header">
+                    <h2>Fazer Login</h2>
+                    <p>Digite suas credenciais para acessar o sistema</p>
+                </div>
+
+                <form id="login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" id="email" placeholder="seu@email.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" placeholder="Sua senha" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        <i data-lucide="log-in"></i>
+                        Entrar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="page hidden">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="logo-header">
+                        <div class="logo-icon">
+                            <img src="assets/images/logo.svg" alt="PontoMax Logo" class="header-logo-svg">
+                        </div>
+                        <h1>PontoMax</h1>
+                    </div>
+                </div>
+
+                <nav class="nav-menu">
+                    <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                        <i data-lucide="layout-dashboard"></i> Dashboard
+                    </a>
+                    <a href="#registros" class="nav-item" data-page="registros">
+                        <i data-lucide="clock"></i>
+                        Meus Registros
+                    </a>
+                    <a href="#holerite" class="nav-item" data-page="holerite">
+                        <i data-lucide="dollar-sign"></i>
+                        Meu Holerite
+                    </a>
+                    <a href="#equipe" class="nav-item" data-page="equipe">
+                        <i data-lucide="users"></i>
+                        Equipe
+                    </a>
+                    <a href="#banco-horas" class="nav-item" data-page="banco-horas">
+                        <i data-lucide="database"></i>
+                        Banco de Horas
+                    </a>
+                    <a href="#fechamento" class="nav-item" data-page="fechamento">
+                        <i data-lucide="calendar-check"></i>
+                        Fechamento
+                    </a>
+                </nav>
+
+                <div class="user-menu">
+                    <div class="user-avatar" id="user-menu-trigger">
+                        <span id="user-initials">U</span>
+                    </div>
+                    <div class="dropdown-menu" id="user-dropdown">
+                        <div class="user-info">
+                            <p class="user-name" id="user-name">Usuário</p>
+                            <p class="user-email" id="user-email">usuario@email.com</p>
+                            <span class="user-role" id="user-role">COLABORADOR</span>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="#perfil" class="dropdown-item">
+                            <i data-lucide="user"></i>
+                            Perfil
+                        </a>
+                        <a href="#configuracoes" class="dropdown-item">
+                            <i data-lucide="settings"></i>
+                            Configurações
+
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" id="logout-btn">
+                            <i data-lucide="log-out"></i>
+                            Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="content-page active">
+                <div class="page-header">
+                    <h1>Olá, <span id="dashboard-user-name">Usuário</span>!</h1>
+                    <p id="dashboard-current-date">Carregando data...</p>
+                </div>
+
+                <div class="main-clock-card">
+                    <div class="time-display-large" id="current-time">--:--:--</div>
+                    <p class="time-label">Horário Atual</p>
+                    <button class="btn-primary" id="punch-btn">
+                        <i data-lucide="log-in"></i>
+                        <span>Registrar Entrada</span>
+                    </button>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Hoje</h3>
+                            <i data-lucide="timer" class="card-icon"></i>
+                        </div>
+                        <div class="card-content">
+                            <div class="stat-value" id="today-worked-hours">--:--</div>
+                            <div class="stat-label">Horas trabalhadas até agora</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Previsão de saída</h3>
+                            <i data-lucide="log-out" class="card-icon"></i>
+                        </div>
+                        <div class="card-content">
+                            <div class="stat-value" id="estimated-exit-time">--:--</div>
+                            <div class="stat-label">Com base na jornada</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Banco de Horas</h3>
+                            <i data-lucide="trending-up" class="card-icon"></i>
+                        </div>
+                        <div class="card-content">
+                            <div class="stat-value positive" id="hours-bank-balance">+0h 00m</div>
+                            <div class="stat-label">Saldo acumulado</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="today-records-card">
+                    <h2>Registros de Hoje</h2>
+                    <p>Sua linha do tempo de registros</p>
+                    <div class="records-timeline" id="records-timeline">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registros Page -->
+            <div id="registros-page" class="content-page">
+                <div class="page-header">
+                    <h1>Meus registros</h1>
+                    <p>Visualize e gerencie seus registros de ponto</p>
+                </div>
+
+                <div class="main-card">
+                    <div class="filters-container">
+                        <div class="form-group">
+                            <label for="period-filter">Período</label>
+                            <div class="input-with-button">
+                                <input type="text" id="period-filter" class="form-input"
+                                    placeholder="DD/MM/AAAA - DD/MM/AAAA">
+                                <button class="btn-primary" id="search-btn">
+                                    <i data-lucide="search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="records-table-wrapper">
+                        <table class="records-table-detailed">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Total Trabalhado</th>
+                                    <th>Horas Extras</th>
+                                    <th>Débito</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="period-summary">
+                        <h3 class="summary-title">Resumo do período</h3>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="summary-value" id="summary-total-worked">--h --m</span>
+                                <span class="summary-label">Total de horas trabalhadas</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-value positive" id="summary-overtime">+--h --m</span>
+                                <span class="summary-label">Horas Extras</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-value negative" id="summary-debit">---h --m</span>
+                                <span class="summary-label">Débitos</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holerite Page -->
+            <div id="holerite-page" class="content-page">
+                <div class="page-header">
+                    <h1>Meu holerite</h1>
+                    <p>Consulte e baixe Seus holerites mensais</p>
+                </div>
+
+                <div class="filters-card">
+                    <div class="form-group">
+                        <label for="payslip-period">Selecione o período a consultar</label>
+                        <select id="payslip-period" class="form-select">
+                            <option value="2025-08">Agosto/2025</option>
+                            <option value="2025-07">Julho/2025</option>
+                            <option value="2025-06">Junho/2025</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-outline">
+                            <i data-lucide="eye"></i>
+                            <span>Visualizar</span>
+                        </button>
+                        <button class="btn-primary">
+                            <i data-lucide="download"></i>
+                            <span>Baixar PDF</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="payslip-card">
+                    <div class="payslip-header">
+                        <h2 id="payslip-title">Holerite - Agosto/2025</h2>
+                        <p id="payslip-user-info">Carregando...</p>
+                    </div>
+
+                    <div class="payslip-section">
+                        <div class="section-header earnings">
+                            <i data-lucide="dollar-sign"></i>
+                            <h3>Remunerações</h3>
+                        </div>
+                        <div class="section-content" id="payslip-earnings-content">
+                        </div>
+                        <div class="section-total">
+                            <span>Total Bruto</span>
+                            <span id="payslip-gross-total">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <div class="payslip-section">
+                        <div class="section-header deductions">
+                            <i data-lucide="dollar-sign"></i>
+                            <h3>Descontos</h3>
+                        </div>
+                        <div class="section-content" id="payslip-deductions-content">
+                        </div>
+                        <div class="section-total">
+                            <span>Total Descontos</span>
+                            <span id="payslip-deductions-total">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <div class="net-value-summary">
+                        <p>VALOR LÍQUIDO A RECEBER</p>
+                        <h2 id="payslip-net-total">R$ 0,00</h2>
+                        <span>Crédito em conta corrente</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equipe Page -->
+            <div id="equipe-page" class="content-page">
+            </div>
+
+            <div id="fechamento-page" class="content-page">
+            </div>
+
+            <div id="banco-horas-page" class="content-page">
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <div id="employee-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button id="modal-close-btn" class="modal-close-btn">
+                <i data-lucide="x"></i>
+            </button>
+
+            <div class="modal-header">
+                <div class="employee-initials" id="modal-initials">AC</div>
+            </div>
+
+            <form class="modal-form">
+                <div class="form-group">
+                    <label for="modal-fullname">Nome completo</label>
+                    <input type="text" id="modal-fullname" class="form-input" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="modal-email">E-mail</label>
+                    <input type="email" id="modal-email" class="form-input" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="modal-role">Cargo</label>
+                    <input type="text" id="modal-role" class="form-input" disabled>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="modal-salary">Salário Base</label>
+                        <input type="text" id="modal-salary" class="form-input" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-monthly-hours">Horas Mensais</label>
+                        <input type="text" id="modal-monthly-hours" class="form-input" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-hourly-rate">Valor Hora</label>
+                        <input type="text" id="modal-hourly-rate" class="form-input" disabled>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-primary">Salvar alterações</button>
+                    <button type="button" class="btn-danger">Remover funcionário</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="register-employee-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button id="register-modal-close-btn" class="modal-close-btn">
+                <i data-lucide="x"></i>
+            </button>
+
+            <div class="modal-header-simple">
+                <h2 class="modal-title">Cadastrar funcionário</h2>
+            </div>
+
+            <form class="modal-form">
+                <div class="form-group">
+                    <label for="register-fullname">Nome completo</label>
+                    <input type="text" id="register-fullname" class="form-input" placeholder="Digite o nome completo">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">E-mail</label>
+                    <input type="email" id="register-email" class="form-input" placeholder="Digite o e-mail">
+                </div>
+                <div class="form-group">
+                    <label for="register-role">Cargo</label>
+                    <input type="text" id="register-role" class="form-input" placeholder="Ex: Desenvolvedor">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="register-salary">Salário Base</label>
+                        <input type="number" id="register-salary" class="form-input" placeholder="Ex: 5000">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-monthly-hours">Horas Mensais</label>
+                        <input type="number" id="register-monthly-hours" class="form-input" placeholder="Ex: 160">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-hourly-rate">Valor Hora</label>
+                        <input type="number" id="register-hourly-rate" class="form-input"
+                            placeholder="Calculado automaticamente" disabled>
+                    </div>
+                </div>
+
+                <div class="modal-actions single-button">
+                    <button type="submit" class="btn-primary">Cadastrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="assets/js/dashboard.js"></script>
+</body>
+
+</html>

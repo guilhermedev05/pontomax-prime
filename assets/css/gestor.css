@@ -1,0 +1,562 @@
+/* PontoMax - Estilos Específicos do Perfil Gestor */
+
+/* Grid dos cards de resumo superior */
+.summary-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.summary-card .card-content .value {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.summary-card .card-content .label {
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+.summary-card .card-content .sub-label {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-top: 0.25rem;
+}
+.summary-card .card-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--muted-foreground);
+}
+
+/* Cores para os cards */
+.value.warning, .card-icon.warning, .summary-list strong.warning { color: var(--warning); }
+.value.success, .card-icon.success, .summary-list strong.success { color: var(--success); }
+.value.danger, .card-icon.danger { color: var(--danger); }
+
+/* Card principal e tabela */
+.main-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+.card-header-flex {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+.card-header-flex h2 { font-size: 1.25rem; font-weight: 600; }
+.card-header-flex p { color: var(--muted-foreground); margin-top: 0.25rem; }
+
+.team-status-table-wrapper { overflow-x: auto; }
+.team-status-table { width: 100%; border-collapse: collapse; }
+.team-status-table th, .team-status-table td {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+.team-status-table thead { background-color: var(--background); }
+.team-status-table th { font-size: 0.75rem; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; }
+.team-status-table tbody tr:last-child td { border-bottom: none; }
+
+.employee-cell { display: flex; align-items: center; gap: 0.75rem; }
+.employee-initials {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+.status-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.875rem; }
+.status-badge i { width: 0.875rem; height: 0.875rem; }
+
+/* Cores dos status */
+.status-badge.working { background-color: hsl(142, 76%, 36%, 0.1); color: var(--success); }
+.status-badge.paused { background-color: hsl(38, 92%, 50%, 0.1); color: var(--warning); }
+.status-badge.absent { background-color: hsl(0, 84%, 60%, 0.1); color: var(--danger); }
+.status-badge.finished { background-color: hsl(215, 16%, 47%, 0.1); color: var(--secondary); }
+
+.card-footer { padding: 1.5rem; text-align: right; }
+
+/* Seção inferior */
+.bottom-section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.quick-actions-card, .weekly-summary-card { background: var(--card); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow-md); }
+.quick-actions-card h2, .weekly-summary-card h2 { font-size: 1.125rem; font-weight: 600; }
+.quick-actions-card p, .weekly-summary-card p { color: var(--muted-foreground); margin-top: 0.25rem; margin-bottom: 1.5rem; }
+
+.actions-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.action-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: var(--radius); text-decoration: none; color: var(--foreground); font-weight: 500; transition: background-color 0.2s; }
+.action-item:hover { background-color: var(--background); }
+
+.summary-list { display: flex; flex-direction: column; gap: 1rem; }
+/* Localize esta regra e a substitua */
+.summary-item {
+    display: flex; /* Garante que os itens fiquem na mesma linha */
+    justify-content: space-between; /* Empurra o texto para a esquerda e o valor para a direita */
+    flex-direction: row;
+    align-items: center; /* Alinha verticalmente */
+    padding: 0.5rem 0; /* Adiciona um respiro vertical */
+    border-bottom: 1px solid var(--border); /* Adiciona uma linha divisória sutil */
+}
+
+/* Adicione esta regra para remover a borda do último item */
+.summary-list .summary-item:last-child {
+    border-bottom: none;
+}
+
+.main-card .card-content {
+    padding: 1.5rem;
+}
+
+/* Barra de Busca */
+.search-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.search-bar .form-input {
+    flex-grow: 1;
+    height: auto; /* Permite que o padding defina a altura */
+    padding: 0.625rem 1rem; /* Ajusta o padding para um botão de 40px de altura */
+}
+
+.search-bar .btn-primary {
+    height: auto;
+    padding: 0.625rem 1.5rem;
+    flex-shrink: 0; /* Impede que o botão encolha */
+}
+
+
+/* Tabela de Funcionários */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.team-list-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.team-list-table th,
+.team-list-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.team-list-table thead {
+    background-color: var(--background);
+}
+
+.team-list-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+}
+
+.team-list-table td {
+    font-weight: 500;
+}
+
+.team-list-table .btn-outline {
+    height: auto;
+    padding: 0.375rem 1rem; /* Botão "Ver" menor */
+}
+
+/* Célula de Meta Diária */
+.daily-goal-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+.daily-goal-cell.warning { color: var(--warning); }
+.daily-goal-cell.success { color: var(--success); }
+
+.daily-goal-cell i {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Em assets/css/gestor.css, adicione este código ao final */
+
+/* --- Estilos do Modal de Funcionário --- */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.modal-overlay:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: var(--shadow-2xl);
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.3s;
+}
+
+.modal-overlay:not(.hidden) .modal-content {
+    transform: scale(1);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted-foreground);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    margin-top: -3.5rem; /* Puxa o avatar para cima */
+}
+
+.modal-header .employee-initials {
+    width: 4rem; /* 64px */
+    height: 4rem;
+    font-size: 1.5rem;
+    border: 4px solid var(--card);
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Deixa os inputs com cara de texto, mas mantendo a estrutura */
+.modal-form .form-input:disabled {
+    background-color: var(--background);
+    border-color: var(--border);
+    opacity: 1;
+    cursor: text;
+}
+
+.form-row {
+    display: grid;
+    /* Esta linha é a correção principal. Ela torna o grid flexível. */
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+/* Estilo para o botão de perigo/remover */
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding: 0 1.5rem;
+    background: var(--danger);
+    color: var(--danger-foreground);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    opacity: 0.9;
+}
+
+.modal-header-simple {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.modal-actions.single-button {
+    justify-content: flex-end; /* Alinha o único botão à direita */
+}
+
+/* Permite que o botão Cadastrar ocupe mais espaço se necessário */
+.modal-actions .btn-primary {
+    width: 100%;
+}
+
+.step-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    max-width: 600px; /* Limita a largura do card */
+}
+
+.step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.step-header i {
+    width: 2rem;
+    height: 2rem;
+    color: var(--primary);
+}
+
+.step-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.step-header p {
+    color: var(--muted-foreground);
+    margin: 0.25rem 0 0;
+}
+
+.step-content {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    padding-top: 1.5rem;
+}
+
+.step-content .form-group {
+    flex-grow: 1;
+}
+
+.step-content .btn-primary {
+    flex-shrink: 0; /* Impede que o botão encolha */
+}
+
+.closing-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.closing-table th,
+.closing-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.closing-table thead {
+    background-color: var(--background);
+}
+
+.closing-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+}
+
+.closing-table td {
+    font-weight: 500;
+}
+
+.closing-table td:last-child,
+.closing-table th:last-child {
+    text-align: center;
+}
+
+.form-checkbox {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}
+
+.card-footer.single-button {
+    padding: 1.5rem 0 0; /* Espaçamento superior, sem padding lateral */
+    text-align: left;
+}
+
+.step-content.column {
+    flex-direction: column;
+    align-items: stretch; /* Faz os itens ocuparem a largura total */
+}
+
+#progress-status-text {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 1.25rem;
+    background-color: var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    width: 0%; /* Começa com 0 de largura */
+    background-color: var(--primary);
+    border-radius: var(--radius);
+    /* A MÁGICA DA ANIMAÇÃO ACONTECE AQUI */
+    transition: width 2s ease-in-out; 
+}
+
+.success-message-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem;
+    text-align: center;
+    gap: 1rem;
+}
+
+.lucide-check-circle {
+    stroke: var(--success); /* <-- ADICIONE ESTA LINHA para colorir o SVG */
+}
+
+.success-message-container i {
+    width: 3rem; /* 48px */
+    height: 3rem;
+    color: var(--success); /* Mantenha para compatibilidade ou outros elementos */
+    stroke: var(--success); /* <-- ADICIONE ESTA LINHA para colorir o SVG */
+}
+
+.success-message-container h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--success);
+}
+
+.filter-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-filter {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    background-color: var(--card);
+    color: var(--muted-foreground);
+    border-radius: var(--radius);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-filter:hover {
+    background-color: var(--background);
+    color: var(--foreground);
+}
+
+.btn-filter.active {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--primary);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table thead {
+    background-color: var(--background);
+}
+
+.data-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+}
+
+.data-table td {
+    font-weight: 500;
+}
+
+.data-table .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted-foreground);
+}
+
+/* Responsividade */
+
+
+@media (max-width: 1024px) {
+    .summary-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    .bottom-section-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+    .summary-cards-grid { grid-template-columns: 1fr; }
+}
+
+
+@media (min-width: 550px) {
+    .modal-actions .btn-primary {
+        width: auto;
+    }
+}

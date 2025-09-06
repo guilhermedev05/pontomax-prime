@@ -1,0 +1,139 @@
+/* PontoMax - Estilos Específicos da Página "Meu Holerite" */
+
+/* Card de Filtros */
+.filters-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.filters-card .form-group {
+    flex-grow: 1;
+    max-width: 300px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Card Principal do Holerite */
+.payslip-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    overflow: hidden; /* Garante que os cantos arredondados sejam aplicados nos filhos */
+}
+
+.payslip-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.payslip-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.payslip-header p {
+    color: var(--muted-foreground);
+    margin: 0.25rem 0 0;
+}
+
+/* Seções (Remunerações / Descontos) */
+.payslip-section {
+    /* Espaçamento gerenciado internamente */
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+}
+
+.section-header.earnings { background-color: hsl(142, 76%, 36%, 0.05); } /* success com 5% opacidade */
+.section-header.deductions { background-color: hsl(0, 84%, 60%, 0.05); } /* danger com 5% opacidade */
+
+.section-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.section-header.earnings h3, .section-header.earnings i { color: var(--success); }
+.section-header.deductions h3, .section-header.deductions i { color: var(--danger); }
+
+.section-content {
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Linha de item (e.g., Salário Base .... 5.000,00) */
+.line-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-description span {
+    font-weight: 500;
+}
+
+.item-description small {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+}
+
+.item-value {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Total da Seção */
+.section-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    font-weight: 600;
+}
+
+/* Resumo Final (Valor Líquido) */
+.net-value-summary {
+    background-color: var(--background);
+    padding: 2rem;
+    text-align: center;
+}
+
+.net-value-summary p {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.net-value-summary h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0.5rem 0;
+}
+
+.net-value-summary span {
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+}
