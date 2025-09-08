@@ -322,50 +322,99 @@ class PontoMaxApp {
 
     loadRegistrosData() {
         const recordsList = document.getElementById('records-table-body');
-        if (!recordsList) return;
+        const periodInput = document.getElementById('period-filter');
+        const searchBtn = document.getElementById('search-btn');
 
-        // Mock data mais detalhado, simulando o que viria da API
+        if (!recordsList || !periodInput || !searchBtn) return;
+
+        // Base de dados simulada completa
         const mockRecords = [
             { date: '2025-08-26', worked: 8, overtime: 0, debit: 0, status: 'Aberto' },
             { date: '2025-08-25', worked: 9, overtime: 1, debit: 0, status: 'Fechado' },
-            { date: '2025-08-24', worked: 0, overtime: 0, debit: 0, status: 'Fechado' }, // Domingo
-            { date: '2025-08-23', worked: 5.5, overtime: 0, debit: 0.5, status: 'Fechado' } // 05:30 trabalhadas, 00:30 débito
+            { date: '2025-08-24', worked: 0, overtime: 0, debit: 0, status: 'Fechado' },
+            { date: '2025-08-23', worked: 5.5, overtime: 0, debit: 0.5, status: 'Fechado' },
+            { date: '2025-07-30', worked: 8, overtime: 0, debit: 0, status: 'Fechado' },
+            { date: '2025-07-29', worked: 7.5, overtime: 0, debit: 0.5, status: 'Fechado' },
         ];
 
-        // Limpa a tabela antes de preencher
-        recordsList.innerHTML = '';
+        /**
+         * Função responsável por desenhar a tabela e o resumo com base nos dados fornecidos.
+         * @param {Array} recordsToRender - A lista de registros a ser exibida.
+         */
+        const renderTableAndSummary = (recordsToRender) => {
+            recordsList.innerHTML = '';
+            let totalWorked = 0, totalOvertime = 0, totalDebit = 0;
 
-        let totalWorked = 0;
-        let totalOvertime = 0;
-        let totalDebit = 0;
+            if (recordsToRender.length === 0) {
+                recordsList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem;">Nenhum registro encontrado para este período.</td></tr>';
+            } else {
+                recordsToRender.forEach(record => {
+                    const date = new Date(record.date + 'T03:00:00'); // Timezone para evitar erro de dia
+                    totalWorked += record.worked;
+                    totalOvertime += record.overtime;
+                    totalDebit += record.debit;
 
-        // Preenche a tabela
-        mockRecords.forEach(record => {
-            const date = new Date(record.date + 'T00:00:00-03:00'); // Adiciona timezone para evitar erros de data
-            totalWorked += record.worked;
-            totalOvertime += record.overtime;
-            totalDebit += record.debit;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                    <td>
+                        <div class="date-cell">
+                            <span class="day-of-week">${date.toLocaleDateString('pt-BR', { weekday: 'long' }).replace("-feira", "")}</span>
+                            <span class="full-date">${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                        </div>
+                    </td>
+                    <td>${this.formatHours(record.worked)}</td>
+                    <td class="positive">${this.formatHours(record.overtime)}</td>
+                    <td class="negative">${this.formatHours(record.debit)}</td>
+                    <td><span class="status-badge status-${record.status.toLowerCase()}">${record.status}</span></td>
+                `;
+                    recordsList.appendChild(row);
+                });
+            }
 
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>
-                    <div class="date-cell">
-                        <span class="day-of-week">${date.toLocaleDateString('pt-BR', { weekday: 'long' }).replace("-feira", "")}</span>
-                        <span class="full-date">${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                    </div>
-                </td>
-                <td>${this.formatHours(record.worked)}</td>
-                <td class="positive">${this.formatHours(record.overtime)}</td>
-                <td class="negative">${this.formatHours(record.debit)}</td>
-                <td><span class="status-badge status-${record.status.toLowerCase()}">${record.status}</span></td>
-            `;
-            recordsList.appendChild(row);
+            document.getElementById('summary-total-worked').textContent = this.formatHours(totalWorked, true);
+            document.getElementById('summary-overtime').textContent = `+${this.formatHours(totalOvertime, true)}`;
+            document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
+        };
+
+        /**
+         * Função que filtra os registros com base no intervalo de datas do input.
+         */
+        const filterAndRender = () => {
+            const dates = fp.selectedDates;
+            if (dates.length < 2) {
+                // Se o usuário não selecionou um intervalo completo, mostra tudo
+                renderTableAndSummary(mockRecords);
+                return;
+            }
+
+            const [startDate, endDate] = dates;
+            endDate.setHours(23, 59, 59, 999); // Garante que o dia final seja incluído por completo
+
+            const filteredRecords = mockRecords.filter(record => {
+                const recordDate = new Date(record.date + 'T03:00:00');
+                return recordDate >= startDate && recordDate <= endDate;
+            });
+
+            renderTableAndSummary(filteredRecords);
+        };
+
+        // Inicializa o Flatpickr no campo de input
+        const fp = flatpickr(periodInput, {
+            mode: "range",
+            dateFormat: "d/m/Y",
+            locale: "pt", // Usa o arquivo de tradução que adicionamos no HTML
+            onChange: function (selectedDates, dateStr, instance) {
+                // Opcional: filtrar automaticamente ao selecionar o intervalo
+                // Se preferir que filtre apenas no clique, comente a linha abaixo
+                filterAndRender();
+            }
         });
 
-        // Formata e exibe os totais no resumo
-        document.getElementById('summary-total-worked').textContent = this.formatHours(totalWorked, true);
-        document.getElementById('summary-overtime').textContent = `+${this.formatHours(totalOvertime, true)}`;
-        document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
+        // Adiciona o evento de clique ao botão de busca
+        searchBtn.addEventListener('click', filterAndRender);
+
+        // Renderização inicial da tabela com todos os dados
+        renderTableAndSummary(mockRecords);
     }
 
     loadBancoHorasData() {
@@ -551,194 +600,128 @@ class PontoMaxApp {
         if (!pageContainer) return;
 
         const currentUser = window.authManager.getCurrentUser();
-        if (!currentUser) return;
+        if (!currentUser || (currentUser.perfil !== 'GESTOR' && currentUser.perfil !== 'ADMIN')) {
+            // Se não for gestor, mostra o dashboard de colaborador (ou uma mensagem)
+            // A lógica do dashboard de colaborador já está em dashboard.js
+            return;
+        }
 
-        // VERIFICA SE O USUÁRIO É GESTOR
-        if (currentUser.perfil === 'GESTOR' || currentUser.perfil === 'ADMIN') {
-            // Mock data para o painel do gestor
-            const gestorData = {
-                gestorName: currentUser.nome.split(' ')[0],
-                stats: {
-                    pendentes: 2,
-                    aniversariantes: 1,
-                    ativos: 12,
-                    ausentes: 3
-                },
-                teamStatus: [
-                    { initials: 'JR', name: 'Jean Rufino', status: 'Trabalhando', lastPunch: '08:00', hoursToday: '05:30' },
-                    { initials: 'AC', name: 'Anna Claudia', status: 'Em pausa', lastPunch: '12:00', hoursToday: '01:30' },
-                    { initials: 'EF', name: 'Eduarda Fachola', status: 'Trabalhando', lastPunch: '12:05', hoursToday: '01:25' },
-                    { initials: 'GS', name: 'Guilherme Sales', status: 'Ausente', lastPunch: null, hoursToday: '00:00' },
-                    { initials: 'HS', name: 'Heitor Sales', status: 'Finalizado', lastPunch: '06:00', hoursToday: '06:00' }
-                ],
-                weeklySummary: {
-                    workedHours: '342h 30m',
-                    avgPerEmployee: '7h 45m',
-                    presenceRate: '94.2%',
-                    extraHours: '15h 20m'
+        // Mock data para o painel do gestor
+        const gestorData = {
+            gestorName: currentUser.nome.split(' ')[0],
+            stats: { pendentes: 2, aniversariantes: 1, ativos: 12, ausentes: 3 },
+            teamStatus: [
+                { initials: 'JR', name: 'Jean Rufino', status: 'Trabalhando', lastPunch: '08:00', hoursToday: '05:30' },
+                { initials: 'AC', name: 'Anna Claudia', status: 'Em pausa', lastPunch: '12:00', hoursToday: '01:30' },
+                { initials: 'EF', name: 'Eduarda Fachola', status: 'Trabalhando', lastPunch: '12:05', hoursToday: '01:25' },
+                { initials: 'GS', name: 'Guilherme Sales', status: 'Ausente', lastPunch: null, hoursToday: '00:00' },
+                { initials: 'HS', name: 'Heitor Sales', status: 'Finalizado', lastPunch: '06:00', hoursToday: '06:00' }
+            ],
+            weeklySummary: { workedHours: '342h 30m', avgPerEmployee: '7h 45m', presenceRate: '94.2%', extraHours: '15h 20m' }
+        };
+
+        // HTML completo do Painel de Controle
+        pageContainer.innerHTML = `
+        <div class="page-header">
+            <h1>Painel de Controle</h1>
+            <p>Olá, ${gestorData.gestorName}! Aqui está o resumo da sua equipe</p>
+        </div>
+        <div class="summary-cards-grid">
+            <div class="summary-card">
+                <div class="card-content">
+                    <div class="value warning">${gestorData.stats.pendentes}</div>
+                    <div class="label">Ajustes pendentes</div>
+                    <div class="sub-label">Solicitações para revisar</div>
+                </div>
+                <i data-lucide="alert-triangle" class="card-icon warning"></i>
+            </div>
+            <div class="summary-card">
+                <div class="card-content">
+                    <div class="value">${gestorData.stats.aniversariantes}</div>
+                    <div class="label">Aniversariantes</div>
+                    <div class="sub-label">Esta semana</div>
+                </div>
+                <i data-lucide="calendar" class="card-icon"></i>
+            </div>
+            <div class="summary-card">
+                <div class="card-content">
+                    <div class="value success">${gestorData.stats.ativos}</div>
+                    <div class="label">Ativos hoje</div>
+                    <div class="sub-label">Colaboradores trabalhando</div>
+                </div>
+                <i data-lucide="user-check" class="card-icon success"></i>
+            </div>
+            <div class="summary-card">
+                <div class="card-content">
+                    <div class="value danger">${gestorData.stats.ausentes}</div>
+                    <div class="label">Ausentes</div>
+                    <div class="sub-label">Não registraram ponto</div>
+                </div>
+                <i data-lucide="user-x" class="card-icon danger"></i>
+            </div>
+        </div>
+        <div class="main-card">
+            <div class="card-header-flex">
+                <div>
+                    <h2>Status da Equipe em Tempo Real</h2>
+                    <p>Acompanhe o status atual de todos os colaboradores</p>
+                </div>
+            </div>
+            <div class="team-status-table-wrapper">
+                <table class="team-status-table">
+                    <thead>
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Status</th>
+                            <th>Último Registro</th>
+                            <th>Horas Hoje</th>
+                        </tr>
+                    </thead>
+                    <tbody id="team-status-body"></tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <!-- BOTÃO MODIFICADO COM UM ID -->
+                <button id="view-team-details-btn" class="btn-primary">Ver Detalhes da Equipe</button>
+            </div>
+        </div>
+        <div class="bottom-section-grid">
+            <!-- ... (código das ações rápidas e resumo semanal) ... -->
+        </div>
+    `;
+
+        // Popula a tabela de status da equipe (código existente)
+        const teamStatusBody = document.getElementById('team-status-body');
+        teamStatusBody.innerHTML = '';
+        const statusClasses = { 'Trabalhando': 'working', 'Em pausa': 'paused', 'Ausente': 'absent', 'Finalizado': 'finished' };
+        const statusIcons = { 'Trabalhando': 'circle', 'Em pausa': 'pause-circle', 'Ausente': 'user-x', 'Finalizado': 'check-circle' };
+
+        gestorData.teamStatus.forEach(member => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+            <td><div class="employee-cell"><div class="employee-initials">${member.initials}</div><span>${member.name}</span></div></td>
+            <td><div class="status-badge ${statusClasses[member.status] || ''}"><i data-lucide="${statusIcons[member.status] || 'circle'}"></i><span>${member.status}</span></div></td>
+            <td>${member.lastPunch || '--:--'}</td>
+            <td>${member.hoursToday}</td>
+        `;
+            teamStatusBody.appendChild(row);
+        });
+
+        // =========================================================================
+        // NOVA LÓGICA ADICIONADA AQUI
+        // =========================================================================
+        // 1. Encontra o botão que acabamos de criar
+        const viewTeamBtn = document.getElementById('view-team-details-btn');
+
+        // 2. Adiciona o "ouvinte" de clique
+        if (viewTeamBtn) {
+            viewTeamBtn.addEventListener('click', () => {
+                // 3. Chama a função de navegação para a página 'equipe'
+                // (Assumindo que esta função está dentro da classe PontoMaxApp)
+                if (window.pontoMaxApp) {
+                    window.pontoMaxApp.navigateToPage('equipe');
                 }
-            };
-
-            // HTML completo do Painel de Controle
-            pageContainer.innerHTML = `
-            <div class="page-header">
-                <h1>Painel de Controle</h1>
-                <p>Olá, ${gestorData.gestorName}! Aqui está o resumo da sua equipe</p>
-            </div>
-
-            <div class="summary-cards-grid">
-                <div class="summary-card">
-                    <div class="card-content">
-                        <div class="value warning">${gestorData.stats.pendentes}</div>
-                        <div class="label">Ajustes pendentes</div>
-                        <div class="sub-label">Solicitações para revisar</div>
-                    </div>
-                    <i data-lucide="alert-triangle" class="card-icon warning"></i>
-                </div>
-                <div class="summary-card">
-                    <div class="card-content">
-                        <div class="value">${gestorData.stats.aniversariantes}</div>
-                        <div class="label">Aniversariantes</div>
-                        <div class="sub-label">Esta semana</div>
-                    </div>
-                    <i data-lucide="calendar" class="card-icon"></i>
-                </div>
-                <div class="summary-card">
-                    <div class="card-content">
-                        <div class="value success">${gestorData.stats.ativos}</div>
-                        <div class="label">Ativos hoje</div>
-                        <div class="sub-label">Colaboradores trabalhando</div>
-                    </div>
-                    <i data-lucide="user-check" class="card-icon success"></i>
-                </div>
-                <div class="summary-card">
-                    <div class="card-content">
-                        <div class="value danger">${gestorData.stats.ausentes}</div>
-                        <div class="label">Ausentes</div>
-                        <div class="sub-label">Não registraram ponto</div>
-                    </div>
-                    <i data-lucide="user-x" class="card-icon danger"></i>
-                </div>
-            </div>
-
-            <div class="main-card">
-                <div class="card-header-flex">
-                    <div>
-                        <h2>Status da Equipe em Tempo Real</h2>
-                        <p>Acompanhe o status atual de todos os colaboradores</p>
-                    </div>
-                </div>
-                <div class="team-status-table-wrapper">
-                    <table class="team-status-table">
-                        <thead>
-                            <tr>
-                                <th>Funcionário</th>
-                                <th>Status</th>
-                                <th>Último Registro</th>
-                                <th>Horas Hoje</th>
-                            </tr>
-                        </thead>
-                        <tbody id="team-status-body">
-                            </tbody>
-                    </table>
-                </div>
-                <div class="card-footer">
-                    <button class="btn-primary">Ver Detalhes da Equipe</button>
-                </div>
-            </div>
-
-            <div class="bottom-section-grid">
-                <div class="quick-actions-card">
-                    <h2>Ações rápidas</h2>
-                    <p>Acesso rápido às funcionalidades mais utilizadas</p>
-                    <div class="actions-list">
-                        <a href="#" class="action-item">
-                            <i data-lucide="alert-triangle"></i>
-                            <span>Revisar Ajustes Pendentes (${gestorData.stats.pendentes})</span>
-                        </a>
-                        <a href="#" class="action-item">
-                            <i data-lucide="database"></i>
-                            <span>Gestão do Banco de Horas</span>
-                        </a>
-                        <a href="#" class="action-item">
-                            <i data-lucide="calendar-check"></i>
-                            <span>Fechamento do Mês</span>
-                        </a>
-                    </div>
-                </div>
-                <div class="weekly-summary-card">
-                    <h2>Resumo Semanal</h2>
-                    <p>Métricas da semana atual</p>
-                    <div class="summary-list">
-                        <div class="summary-item">
-                            <span>Horas trabalhadas</span>
-                            <strong>${gestorData.weeklySummary.workedHours}</strong>
-                        </div>
-                        <div class="summary-item">
-                            <span>Média por Funcionário</span>
-                            <strong>${gestorData.weeklySummary.avgPerEmployee}</strong>
-                        </div>
-                        <div class="summary-item">
-                            <span>Taxa de Presença</span>
-                            <strong class="success">${gestorData.weeklySummary.presenceRate}</strong>
-                        </div>
-                        <div class="summary-item">
-                            <span>Horas Extra</span>
-                            <strong class="warning">${gestorData.weeklySummary.extraHours}</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-            // Popula a tabela de status da equipe
-            const teamStatusBody = document.getElementById('team-status-body');
-            teamStatusBody.innerHTML = '';
-            const statusClasses = {
-                'Trabalhando': 'working',
-                'Em pausa': 'paused',
-                'Ausente': 'absent',
-                'Finalizado': 'finished'
-            };
-            const statusIcons = {
-                'Trabalhando': 'circle',
-                'Em pausa': 'pause-circle',
-                'Ausente': 'user-x',
-                'Finalizado': 'check-circle'
-            };
-
-            gestorData.teamStatus.forEach(member => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                <td>
-                    <div class="employee-cell">
-                        <div class="employee-initials">${member.initials}</div>
-                        <span>${member.name}</span>
-                    </div>
-                </td>
-                <td>
-                    <div class="status-badge ${statusClasses[member.status] || ''}">
-                        <i data-lucide="${statusIcons[member.status] || 'circle'}"></i>
-                        <span>${member.status}</span>
-                    </div>
-                </td>
-                <td>${member.lastPunch || '--:--'}</td>
-                <td>${member.hoursToday}</td>
-            `;
-                teamStatusBody.appendChild(row);
             });
-
-        } else {
-            // MENSAGEM PARA O PERFIL DE COLABORADOR
-            pageContainer.innerHTML = `
-            <div class="page-header">
-                <h1>Equipe</h1>
-                <p>Gerencie sua equipe e visualize relatórios</p>
-            </div>
-            <div class="main-card">
-                <p>Funcionalidade em desenvolvimento para o seu perfil.</p>
-            </div>
-        `;
         }
 
         // Recria todos os ícones da Lucide na página
@@ -754,16 +737,15 @@ class PontoMaxApp {
         const currentUser = window.authManager.getCurrentUser();
         if (!currentUser || (currentUser.perfil !== 'GESTOR' && currentUser.perfil !== 'ADMIN')) {
             pageContainer.innerHTML = `
-            <div class="page-header">
-                <h1>Acesso Negado</h1>
-                <p>Você não tem permissão para visualizar esta página.</p>
-            </div>
-        `;
+        <div class="page-header">
+            <h1>Acesso Negado</h1>
+            <p>Você não tem permissão para visualizar esta página.</p>
+        </div>
+    `;
             return;
         }
 
         // Mock data para a lista de funcionários
-        // Em app.js, na função loadEquipeData, ATUALIZE o teamData
         const teamData = [
             { id: 1, initials: 'JR', name: 'Jean Rufino', fullname: 'Jean Carlos Rufino', email: 'jean.rufino@pontomax.com.br', role: 'Desenvolvedor', workedHours: 6, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
             { id: 2, initials: 'AC', name: 'Anna Claudia', fullname: 'Anna Claudia Barros da Silveira', email: 'anna.silveira@pontomax.com.br', role: 'Desenvolvedor(a)', workedHours: 6, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
@@ -772,55 +754,113 @@ class PontoMaxApp {
             { id: 5, initials: 'HS', name: 'Heitor Sales', fullname: 'Heitor Sales', email: 'heitor.sales@pontomax.com.br', role: 'Scrum Master', workedHours: 8, dailyGoal: 8, salary: 7000, monthlyHours: 160 }
         ];
 
-        // Constrói o HTML da página
+        // Constrói o HTML da página com IDs para os elementos de busca
         pageContainer.innerHTML = `
-        <div class="page-header">
-            <h1>Equipe / Funcionários</h1>
-            <p>Pesquise e acompanhe sua equipe em tempo real</p>
-        </div>
+    <div class="page-header">
+        <h1>Equipe / Funcionários</h1>
+        <p>Pesquise e acompanhe sua equipe em tempo real</p>
+    </div>
 
-        <div class="main-card">
-            <div class="card-header-flex">
-                <div>
-                    <h2><i data-lucide="users"></i> Funcionários</h2>
-                    <p>Lista de colaboradores gerenciados</p>
-                </div>
+    <div class="main-card">
+        <div class="card-header-flex">
+            <div>
+                <h2><i data-lucide="users"></i> Funcionários</h2>
+                <p>Lista de colaboradores gerenciados</p>
             </div>
-            <div class="card-content">
-                <div class="search-bar">
-                    <input type="text" class="form-input" placeholder="Buscar por nome">
-                    <button class="btn-primary">
-                        <i data-lucide="search"></i>
-                        <span>Buscar</span>
-                    </button>
-                </div>
-                <div class="table-wrapper">
-                    <table class="team-list-table">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Cargo</th>
-                                <th>Meta diária</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="team-list-body">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="card-footer">
-                <button id="btn-show-register-modal" class="btn-primary">
-                    <i data-lucide="plus"></i>
-                    <span>Cadastrar Funcionário</span>
+        </div>
+        <div class="card-content">
+            <div class="search-bar">
+                <input type="text" id="team-search-input" class="form-input" placeholder="Buscar por nome">
+                <button id="team-search-btn" class="btn-primary">
+                    <i data-lucide="search"></i>
+                    <span>Buscar</span>
                 </button>
             </div>
+            <div class="table-wrapper">
+                <table class="team-list-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Cargo</th>
+                            <th>Meta diária</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="team-list-body"></tbody>
+                </table>
+            </div>
         </div>
+        <div class="card-footer">
+            <button id="btn-show-register-modal" class="btn-primary">
+                <i data-lucide="plus"></i>
+                <span>Cadastrar Funcionário</span>
+            </button>
+        </div>
+    </div>
     `;
 
-        // Popula a tabela com os dados
         const tableBody = document.getElementById('team-list-body');
-        tableBody.innerHTML = ''; // Limpa a tabela antes de popular
+        const searchInput = document.getElementById('team-search-input');
+        const searchBtn = document.getElementById('team-search-btn');
+        const btnShowRegister = document.getElementById('btn-show-register-modal');
+
+        /**
+         * Renderiza a tabela de funcionários.
+         * @param {Array} employeesToRender - A lista de funcionários para exibir.
+         */
+        const renderTeamTable = (employeesToRender) => {
+            tableBody.innerHTML = '';
+
+            if (employeesToRender.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">Nenhum funcionário encontrado.</td></tr>';
+                return;
+            }
+
+            employeesToRender.forEach(member => {
+                const isGoalMet = member.workedHours >= member.dailyGoal;
+                const progressClass = isGoalMet ? 'success' : 'warning';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                <td>${member.name}</td>
+                <td>${member.role}</td>
+                <td>
+                    <div class="daily-goal-cell ${progressClass}">
+                        <i data-lucide="clock"></i>
+                        <span>${member.workedHours}h / ${member.dailyGoal}h</span>
+                    </div>
+                </td>
+                <td>
+                    <button class="btn-outline" data-employee-id="${member.id}">Ver</button>
+                </td>
+            `;
+                tableBody.appendChild(row);
+            });
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        };
+
+        /**
+         * Filtra os funcionários com base no termo de busca e renderiza a tabela.
+         */
+        const filterAndRender = () => {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            if (!searchTerm) {
+                renderTeamTable(teamData);
+                return;
+            }
+            const filteredEmployees = teamData.filter(member =>
+                member.name.toLowerCase().includes(searchTerm)
+            );
+            renderTeamTable(filteredEmployees);
+        };
+
+        // Adiciona os eventos para a funcionalidade de busca
+        searchBtn.addEventListener('click', filterAndRender);
+        searchInput.addEventListener('keyup', filterAndRender);
+
+        // **CORREÇÃO ADICIONADA AQUI**
+        // Adiciona evento de clique para abrir o modal de "Ver"
         tableBody.addEventListener('click', (e) => {
             if (e.target && e.target.classList.contains('btn-outline')) {
                 const employeeId = parseInt(e.target.dataset.employeeId);
@@ -828,37 +868,13 @@ class PontoMaxApp {
             }
         });
 
-        const btnShowRegister = document.getElementById('btn-show-register-modal');
+        // Adiciona evento de clique para abrir o modal de "Cadastrar"
         if (btnShowRegister) {
             btnShowRegister.addEventListener('click', () => this.openRegisterModal());
         }
 
-        teamData.forEach(member => {
-            const isGoalMet = member.workedHours >= member.dailyGoal;
-            const progressClass = isGoalMet ? 'success' : 'warning';
-
-            const row = document.createElement('tr');
-            row.innerHTML = `
-            <td>${member.name}</td>
-            <td>${member.role}</td>
-            <td>
-                <div class="daily-goal-cell ${progressClass}">
-                    <i data-lucide="clock"></i>
-                    <span>${member.workedHours}h / ${member.dailyGoal}h</span>
-                </div>
-            </td>
-            <td>
-                <button class="btn-outline" data-employee-id="${member.id}">Ver</button>
-            </td>
-        `;
-            tableBody.appendChild(row);
-        });
-
-        // Recria os ícones da Lucide
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-
+        // Renderização inicial da tabela
+        renderTeamTable(teamData);
     }
 
     updateClock() {

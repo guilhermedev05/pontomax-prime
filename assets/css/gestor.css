@@ -109,7 +109,7 @@
 .summary-item {
     display: flex; /* Garante que os itens fiquem na mesma linha */
     justify-content: space-between; /* Empurra o texto para a esquerda e o valor para a direita */
-    flex-direction: row;
+    flex-direction: column-reverse;
     align-items: center; /* Alinha verticalmente */
     padding: 0.5rem 0; /* Adiciona um respiro vertical */
     border-bottom: 1px solid var(--border); /* Adiciona uma linha divisória sutil */
