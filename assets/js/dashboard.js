@@ -283,9 +283,9 @@ class DashboardManager {
     }
 }
 
-// Inicializar dashboard quando a página carregar
-document.addEventListener('DOMContentLoaded', () => {
-    if (!window.dashboardManager) {
-        window.dashboardManager = new DashboardManager();
-    }
-});
+// // Inicializar dashboard quando a página carregar
+// document.addEventListener('DOMContentLoaded', () => {
+//     if (!window.dashboardManager) {
+//         window.dashboardManager = new DashboardManager();
+//     }
+// });

@@ -1,0 +1,17 @@
+# Arquivo do banco de dados SQLite (dentro da pasta do backend)
+pontomax-backend/db.sqlite3
+
+# Pasta do Ambiente Virtual (dentro da pasta do backend)
+pontomax-backend/venv/
+
+# Arquivos de cache do Python
+**/__pycache__/
+*.pyc
+
+# Arquivos de configuração de IDEs e editores
+.vscode/
+.idea/
+
+# Arquivos de variáveis de ambiente (boa prática para o futuro)
+.env
+pontomax-backend/.env

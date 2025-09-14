@@ -11,9 +11,6 @@
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Icons -->
-    <link href="https://unpkg.com/lucide@latest/dist/umd/lucide.js" rel="stylesheet">
-
     <!-- CSS -->
     <link rel="stylesheet" href="assets/css/styles.css">
     <link rel="stylesheet" href="assets/css/components.css">
@@ -357,25 +354,25 @@
             <form class="modal-form">
                 <div class="form-group">
                     <label for="modal-fullname">Nome completo</label>
-                    <input type="text" id="modal-fullname" class="form-input" disabled>
+                    <input type="text" id="modal-fullname" class="form-input">
                 </div>
                 <div class="form-group">
                     <label for="modal-email">E-mail</label>
-                    <input type="email" id="modal-email" class="form-input" disabled>
+                    <input type="email" id="modal-email" class="form-input">
                 </div>
                 <div class="form-group">
                     <label for="modal-role">Cargo</label>
-                    <input type="text" id="modal-role" class="form-input" disabled>
+                    <input type="text" id="modal-role" class="form-input">
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="modal-salary">Salário Base</label>
-                        <input type="text" id="modal-salary" class="form-input" disabled>
+                        <input type="text" id="modal-salary" class="form-input">
                     </div>
                     <div class="form-group">
                         <label for="modal-monthly-hours">Horas Mensais</label>
-                        <input type="text" id="modal-monthly-hours" class="form-input" disabled>
+                        <input type="text" id="modal-monthly-hours" class="form-input">
                     </div>
                     <div class="form-group">
                         <label for="modal-hourly-rate">Valor Hora</label>
@@ -384,8 +381,8 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-primary">Salvar alterações</button>
-                    <button type="button" class="btn-danger">Remover funcionário</button>
+                    <button type="button" id="modal-save-btn" class="btn-primary">Salvar alterações</button>
+                    <button type="button" id="modal-delete-btn" class="btn-danger">Remover funcionário</button>
                 </div>
             </form>
         </div>
@@ -404,30 +401,32 @@
             <form class="modal-form">
                 <div class="form-group">
                     <label for="register-fullname">Nome completo</label>
-                    <input type="text" id="register-fullname" class="form-input" placeholder="Digite o nome completo">
+                    <input type="text" id="register-fullname" class="form-input" placeholder="Digite o nome completo"
+                        required>
                 </div>
                 <div class="form-group">
                     <label for="register-email">E-mail</label>
-                    <input type="email" id="register-email" class="form-input" placeholder="Digite o e-mail">
+                    <input type="email" id="register-email" class="form-input" placeholder="Digite o e-mail" required>
                 </div>
                 <div class="form-group">
                     <label for="register-role">Cargo</label>
-                    <input type="text" id="register-role" class="form-input" placeholder="Ex: Desenvolvedor">
+                    <input type="text" id="register-role" class="form-input" placeholder="Ex: Desenvolvedor" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="register-password">Senha Provisória</label>
+                    <input type="password" id="register-password" class="form-input"
+                        placeholder="Digite uma senha inicial" required>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="register-salary">Salário Base</label>
-                        <input type="number" id="register-salary" class="form-input" placeholder="Ex: 5000">
+                        <input type="number" id="register-salary" class="form-input" placeholder="Ex: 5000" step="0.01">
                     </div>
                     <div class="form-group">
                         <label for="register-monthly-hours">Horas Mensais</label>
                         <input type="number" id="register-monthly-hours" class="form-input" placeholder="Ex: 160">
-                    </div>
-                    <div class="form-group">
-                        <label for="register-hourly-rate">Valor Hora</label>
-                        <input type="number" id="register-hourly-rate" class="form-input"
-                            placeholder="Calculado automaticamente" disabled>
                     </div>
                 </div>
 

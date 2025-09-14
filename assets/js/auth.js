@@ -22,53 +22,37 @@ class AuthManager {
 
     async login(email, password) {
         try {
-            // Simulação de login - em produção, fazer chamada para API Django
-            const mockUsers = [
-                {
-                    id: 1,
-                    nome: 'João Silva',
-                    email: 'joao@empresa.com',
-                    perfil: 'COLABORADOR',
-                    empresa: 'Empresa Demo'
-                },
-                {
-                    id: 2,
-                    nome: 'Maria Santos',
-                    email: 'maria@empresa.com',
-                    perfil: 'GESTOR',
-                    empresa: 'Empresa Demo'
-                },
-                {
-                    id: 3,
-                    nome: 'Admin Sistema',
-                    email: 'admin@empresa.com',
-                    perfil: 'ADMIN',
-                    empresa: 'Empresa Demo'
-                }
-            ];
+            const response = await fetch('http://127.0.0.1:8000/api/token/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: email, password }),
+            });
 
-            // Simular delay de rede
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Verificar credenciais (mock)
-            const user = mockUsers.find(u => u.email === email);
-
-            if (user && (password === '123456' || password === 'admin')) {
-                this.currentUser = user;
-                this.isAuthenticated = true;
-
-                // Salvar no localStorage
-                localStorage.setItem('pontomax_user', JSON.stringify(user));
-
-                return { success: true, user };
-            } else {
+            const data = await response.json();
+            if (!response.ok) {
                 return { success: false, error: 'Credenciais inválidas' };
             }
+
+            // 1. Guardamos os tokens
+            localStorage.setItem('pontomax_access_token', data.access);
+            localStorage.setItem('pontomax_refresh_token', data.refresh);
+            this.isAuthenticated = true;
+
+            // 2. AGORA USAMOS O TOKEN PARA BUSCAR OS DADOS DO USUÁRIO
+            const userProfile = await this.apiCall('/user/');
+            this.currentUser = userProfile;
+
+            // 3. Guardamos o usuário também, para recarregar a página
+            localStorage.setItem('pontomax_user', JSON.stringify(userProfile));
+
+            return { success: true, user: userProfile };
+
         } catch (error) {
             console.error('Erro no login:', error);
-            return { success: false, error: 'Erro interno do servidor' };
+            return { success: false, error: 'Não foi possível conectar ao servidor' };
         }
     }
+
 
     logout() {
         this.currentUser = null;
@@ -101,11 +85,12 @@ class AuthManager {
 
         const permissions = {
             'COLABORADOR': ['dashboard', 'registros', 'holerite', 'perfil'],
-            'GESTOR': ['dashboard', 'perfil', 'equipe', 'banco-horas', 'fechamento'], // <-- VERSÃO CORRIGIDA
+            'GESTOR': ['dashboard', 'perfil', 'equipe', 'banco-horas', 'fechamento'],
             'ADMIN': ['dashboard', 'registros', 'holerite', 'perfil', 'equipe', 'banco-horas', 'fechamento', 'configuracoes', 'organizacao']
         };
 
-        const userPermissions = permissions[this.currentUser.perfil] || [];
+        // CORREÇÃO: Acessa o 'perfil' dentro do objeto aninhado 'profile'
+        const userPermissions = permissions[this.currentUser.profile.perfil] || [];
         return userPermissions.includes(permission);
     }
 
@@ -157,41 +142,54 @@ class AuthManager {
 
     // Método para fazer chamadas autenticadas para a API
     async apiCall(endpoint, options = {}) {
-        const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.getToken()}`
-            }
+        // 1. Pega o token do localStorage
+        const token = this.getToken();
+
+        // 2. Define os cabeçalhos padrão, incluindo o token
+        const headers = {
+            'Content-Type': 'application/json',
+            // Só adiciona o cabeçalho de autorização se o token existir
+            ...(token && { 'Authorization': `Bearer ${token}` })
         };
 
+        // 3. Monta as opções finais da requisição
         const finalOptions = {
-            ...defaultOptions,
+            // Mescla as opções passadas (ex: method, body)
             ...options,
+            // Mescla os cabeçalhos padrão com quaisquer cabeçalhos customizados passados em 'options'
             headers: {
-                ...defaultOptions.headers,
-                ...options.headers
-            }
+                ...headers,
+                ...options.headers,
+            },
         };
 
-        try {
-            const response = await fetch(endpoint, finalOptions);
+        // 4. Faz a chamada fetch
+        const response = await fetch(`http://127.0.0.1:8000/api${endpoint}`, finalOptions);
 
-            if (response.status === 401) {
-                // Token expirado, fazer logout
-                this.logout();
-                throw new Error('Sessão expirada');
-            }
-
-            return response;
-        } catch (error) {
-            console.error('Erro na chamada da API:', error);
-            throw error;
+        // 5. Lida com a resposta (lógica existente)
+        if (response.status === 401) {
+            this.logout();
+            throw new Error('Sessão expirada');
         }
+
+        // Não precisamos mais checar !response.ok aqui, pois a view que chama
+        // pode querer tratar diferentes status (como 404) de forma específica.
+
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            if (response.ok) {
+                return response.json();
+            }
+            // Se a resposta não for OK, mas for JSON (ex: erro de validação), rejeita a promise com os detalhes
+            const errorData = await response.json();
+            return Promise.reject(errorData);
+        }
+
+        return response;
     }
 
     getToken() {
-        // Em produção, retornar o token JWT salvo
-        return this.currentUser ? 'mock-jwt-token' : null;
+        return localStorage.getItem('pontomax_access_token');
     }
 }
 

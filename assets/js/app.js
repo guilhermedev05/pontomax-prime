@@ -76,6 +76,11 @@ class PontoMaxApp {
 
     setupEventListeners() {
         // Formulário de login
+        const registerForm = document.querySelector('#register-employee-modal form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => this.handleRegisterEmployee(e));
+        }
+
         const loginForm = document.getElementById('login-form');
         if (loginForm) {
             loginForm.addEventListener('submit', (e) => this.handleLogin(e));
@@ -177,6 +182,19 @@ class PontoMaxApp {
                 if (targetButton.id === 'btn-enviar-holerites') {
                     this.fechamentoCurrentStep = 4;
                     this.loadFechamentoData();
+                }
+            });
+        }
+
+        const employeeModal = document.getElementById('employee-modal');
+        if (employeeModal) {
+            employeeModal.addEventListener('click', (e) => {
+                const employeeId = employeeModal.dataset.employeeId;
+                if (e.target.id === 'modal-save-btn') {
+                    this.handleUpdateEmployee(employeeId);
+                }
+                if (e.target.id === 'modal-delete-btn') {
+                    this.handleDeleteEmployee(employeeId);
                 }
             });
         }
@@ -287,14 +305,19 @@ class PontoMaxApp {
                 if (currentUser && (currentUser.perfil === 'GESTOR' || currentUser.perfil === 'ADMIN')) {
                     this.loadGestorDashboardData(); // Carrega o painel do GESTOR
                 } else {
-                    this.loadDashboardData(); // Carrega o dashboard do COLABORADOR
+                    if (!window.dashboardManager) {
+                        window.dashboardManager = new DashboardManager();
+                    } else {
+                        // Se já existir, apenas atualiza os dados
+                        window.dashboardManager.loadDashboardData();
+                    }
                 }
                 break;
             case 'registros':
                 this.loadRegistrosData();
                 break;
             case 'holerite':
-                this.loadHoleriteData();
+                // this.loadHoleriteData();
                 break;
             case 'equipe':
                 this.loadEquipeData();
@@ -535,64 +558,72 @@ class PontoMaxApp {
 
     // Substitua a função existente em app.js
     // Substitua completamente a sua função loadHoleriteData por esta versão dinâmica
-    loadHoleriteData() {
+    // Substitua completamente a sua função loadHoleriteData por esta versão
+    async loadHoleriteData() {
         const payslipPeriodSelector = document.getElementById('payslip-period');
-        if (!payslipPeriodSelector) return; // Sai se o elemento não existir
+        if (!payslipPeriodSelector) return;
 
         const selectedPeriod = payslipPeriodSelector.value;
-        const payslipData = this.mockPayslips[selectedPeriod];
 
-        if (!payslipData) {
-            // Limpa a tela se não houver dados para o período
+        try {
+            // A ÚNICA chamada necessária, usando nosso helper que já envia o token
+            const payslipData = await window.authManager.apiCall(`/holerites/?periodo=${selectedPeriod}`);
+
+            // Se a chamada acima for bem-sucedida, o código continua e popula a tela.
+            // A sua lógica para preencher o HTML a partir daqui já está perfeita.
+
+            const earnings = payslipData.vencimentos;
+            const deductions = payslipData.descontos;
+
+            document.getElementById('payslip-title').textContent = `Holerite - ${payslipData.periodLabel}`;
+            document.getElementById('payslip-user-info').textContent = payslipData.userInfo;
+
+            const earningsContent = document.getElementById('payslip-earnings-content');
+            const deductionsContent = document.getElementById('payslip-deductions-content');
+            earningsContent.innerHTML = '';
+            deductionsContent.innerHTML = '';
+
+            let grossTotal = 0;
+            let deductionsTotal = 0;
+
+            const createLineItem = (item, isDeduction = false) => `
+            <div class="line-item">
+                <div class="item-description">
+                    <span>${item.descricao}</span>
+                    ${item.detalhes ? `<small>${item.detalhes}</small>` : ''}
+                </div>
+                <div class="item-value ${isDeduction ? 'negative' : 'positive'}">
+                    ${this.formatCurrency(parseFloat(item.valor)).replace('R$', '')}
+                </div>
+            </div>`;
+
+            earnings.forEach(item => {
+                grossTotal += parseFloat(item.valor);
+                earningsContent.innerHTML += createLineItem(item);
+            });
+
+            deductions.forEach(item => {
+                deductionsTotal += parseFloat(item.valor);
+                deductionsContent.innerHTML += createLineItem(item, true);
+            });
+
+            const netTotal = grossTotal - deductionsTotal;
+
+            document.getElementById('payslip-gross-total').textContent = this.formatCurrency(grossTotal);
+            document.getElementById('payslip-deductions-total').textContent = this.formatCurrency(deductionsTotal);
+            document.getElementById('payslip-net-total').textContent = this.formatCurrency(netTotal);
+
+        } catch (error) {
+            console.error('Erro ao buscar dados do holerite:', error);
+            // Limpa a tela se a API retornar um erro (como 404 - não encontrado)
             document.getElementById('payslip-title').textContent = 'Holerite - Nenhum dado encontrado';
             document.getElementById('payslip-user-info').textContent = '';
-            document.getElementById('payslip-earnings-content').innerHTML = '<p class="no-records">Sem dados de remuneração para este período.</p>';
-            document.getElementById('payslip-deductions-content').innerHTML = '<p class="no-records">Sem dados de desconto para este período.</p>';
+            document.getElementById('payslip-earnings-content').innerHTML = '<p class="no-records">Sem dados para este período.</p>';
+            document.getElementById('payslip-deductions-content').innerHTML = '';
             document.getElementById('payslip-gross-total').textContent = this.formatCurrency(0);
             document.getElementById('payslip-deductions-total').textContent = this.formatCurrency(0);
             document.getElementById('payslip-net-total').textContent = this.formatCurrency(0);
-            return;
         }
-
-        // Popula as informações do cabeçalho
-        document.getElementById('payslip-title').textContent = `Holerite - ${payslipData.periodLabel}`;
-        document.getElementById('payslip-user-info').textContent = payslipData.userInfo;
-
-        const earningsContent = document.getElementById('payslip-earnings-content');
-        const deductionsContent = document.getElementById('payslip-deductions-content');
-        earningsContent.innerHTML = '';
-        deductionsContent.innerHTML = '';
-
-        let grossTotal = 0;
-        let deductionsTotal = 0;
-
-        const createLineItem = (item, isDeduction = false) => `
-        <div class="line-item">
-            <div class="item-description">
-                <span>${item.desc}</span>
-                ${item.details ? `<small>${item.details}</small>` : ''}
-            </div>
-            <div class="item-value ${isDeduction ? 'negative' : 'positive'}">
-                ${this.formatCurrency(item.value).replace('R$', '')}
-            </div>
-        </div>
-    `;
-
-        payslipData.earnings.forEach(item => {
-            grossTotal += item.value;
-            earningsContent.innerHTML += createLineItem(item);
-        });
-
-        payslipData.deductions.forEach(item => {
-            deductionsTotal += item.value;
-            deductionsContent.innerHTML += createLineItem(item, true);
-        });
-
-        const netTotal = grossTotal - deductionsTotal;
-
-        document.getElementById('payslip-gross-total').textContent = this.formatCurrency(grossTotal);
-        document.getElementById('payslip-deductions-total').textContent = this.formatCurrency(deductionsTotal);
-        document.getElementById('payslip-net-total').textContent = this.formatCurrency(netTotal);
     }
 
     loadGestorDashboardData() {
@@ -730,151 +761,120 @@ class PontoMaxApp {
         }
     }
 
-    loadEquipeData() {
+    async loadEquipeData() {
         const pageContainer = document.getElementById('equipe-page');
         if (!pageContainer) return;
 
+        // A verificação de permissão continua a mesma
         const currentUser = window.authManager.getCurrentUser();
-        if (!currentUser || (currentUser.perfil !== 'GESTOR' && currentUser.perfil !== 'ADMIN')) {
-            pageContainer.innerHTML = `
-        <div class="page-header">
-            <h1>Acesso Negado</h1>
-            <p>Você não tem permissão para visualizar esta página.</p>
-        </div>
-    `;
+        if (!currentUser || (currentUser.profile.perfil !== 'GESTOR' && currentUser.profile.perfil !== 'ADMIN')) {
+            pageContainer.innerHTML = `<div class="page-header"><h1>Acesso Negado</h1><p>Você não tem permissão para visualizar esta página.</p></div>`;
             return;
         }
 
-        // Mock data para a lista de funcionários
-        const teamData = [
-            { id: 1, initials: 'JR', name: 'Jean Rufino', fullname: 'Jean Carlos Rufino', email: 'jean.rufino@pontomax.com.br', role: 'Desenvolvedor', workedHours: 6, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
-            { id: 2, initials: 'AC', name: 'Anna Claudia', fullname: 'Anna Claudia Barros da Silveira', email: 'anna.silveira@pontomax.com.br', role: 'Desenvolvedor(a)', workedHours: 6, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
-            { id: 3, initials: 'EF', name: 'Eduarda Fachola', fullname: 'Eduarda Fachola', email: 'eduarda.fachola@pontomax.com.br', role: 'Product Owner', workedHours: 4, dailyGoal: 8, salary: 8000, monthlyHours: 160 },
-            { id: 4, initials: 'GS', name: 'Guilherme Sales', fullname: 'Guilherme Sales', email: 'guilherme.sales@pontomax.com.br', role: 'Desenvolvedor', workedHours: 0, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
-            { id: 5, initials: 'HS', name: 'Heitor Sales', fullname: 'Heitor Sales', email: 'heitor.sales@pontomax.com.br', role: 'Scrum Master', workedHours: 8, dailyGoal: 8, salary: 7000, monthlyHours: 160 }
-        ];
+        try {
+            // 1. BUSCA OS DADOS DA API EM VEZ DE USAR O ARRAY ESTÁTICO
+            const teamData = await window.authManager.apiCall('/equipe/');
 
-        // Constrói o HTML da página com IDs para os elementos de busca
-        pageContainer.innerHTML = `
-    <div class="page-header">
-        <h1>Equipe / Funcionários</h1>
-        <p>Pesquise e acompanhe sua equipe em tempo real</p>
-    </div>
-
-    <div class="main-card">
-        <div class="card-header-flex">
-            <div>
-                <h2><i data-lucide="users"></i> Funcionários</h2>
-                <p>Lista de colaboradores gerenciados</p>
+            // 2. O RESTO DO CÓDIGO PARA CONSTRUIR E RENDERIZAR A PÁGINA CONTINUA O MESMO
+            pageContainer.innerHTML = `
+            <div class="page-header">
+                <h1>Equipe / Funcionários</h1>
+                <p>Pesquise e acompanhe sua equipe em tempo real</p>
             </div>
-        </div>
-        <div class="card-content">
-            <div class="search-bar">
-                <input type="text" id="team-search-input" class="form-input" placeholder="Buscar por nome">
-                <button id="team-search-btn" class="btn-primary">
-                    <i data-lucide="search"></i>
-                    <span>Buscar</span>
-                </button>
-            </div>
-            <div class="table-wrapper">
-                <table class="team-list-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Cargo</th>
-                            <th>Meta diária</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="team-list-body"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card-footer">
-            <button id="btn-show-register-modal" class="btn-primary">
-                <i data-lucide="plus"></i>
-                <span>Cadastrar Funcionário</span>
-            </button>
-        </div>
-    </div>
-    `;
-
-        const tableBody = document.getElementById('team-list-body');
-        const searchInput = document.getElementById('team-search-input');
-        const searchBtn = document.getElementById('team-search-btn');
-        const btnShowRegister = document.getElementById('btn-show-register-modal');
-
-        /**
-         * Renderiza a tabela de funcionários.
-         * @param {Array} employeesToRender - A lista de funcionários para exibir.
-         */
-        const renderTeamTable = (employeesToRender) => {
-            tableBody.innerHTML = '';
-
-            if (employeesToRender.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">Nenhum funcionário encontrado.</td></tr>';
-                return;
-            }
-
-            employeesToRender.forEach(member => {
-                const isGoalMet = member.workedHours >= member.dailyGoal;
-                const progressClass = isGoalMet ? 'success' : 'warning';
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                <td>${member.name}</td>
-                <td>${member.role}</td>
-                <td>
-                    <div class="daily-goal-cell ${progressClass}">
-                        <i data-lucide="clock"></i>
-                        <span>${member.workedHours}h / ${member.dailyGoal}h</span>
+            <div class="main-card">
+                <div class="card-header-flex">
+                    <div>
+                        <h2><i data-lucide="users"></i> Funcionários</h2>
+                        <p>Lista de colaboradores gerenciados</p>
                     </div>
-                </td>
-                <td>
-                    <button class="btn-outline" data-employee-id="${member.id}">Ver</button>
-                </td>
-            `;
-                tableBody.appendChild(row);
+                </div>
+                <div class="card-content">
+                    <div class="search-bar">
+                        <input type="text" id="team-search-input" class="form-input" placeholder="Buscar por nome">
+                        <button id="team-search-btn" class="btn-primary"><i data-lucide="search"></i><span>Buscar</span></button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="team-list-table">
+                            <thead><tr><th>Nome</th><th>Cargo</th><th>Meta diária</th><th>Ações</th></tr></thead>
+                            <tbody id="team-list-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button id="btn-show-register-modal" class="btn-primary"><i data-lucide="plus"></i><span>Cadastrar Funcionário</span></button>
+                </div>
+            </div>`;
+
+            const tableBody = document.getElementById('team-list-body');
+            const searchInput = document.getElementById('team-search-input');
+            const searchBtn = document.getElementById('team-search-btn');
+            const btnShowRegister = document.getElementById('btn-show-register-modal');
+
+            const renderTeamTable = (employeesToRender) => {
+                tableBody.innerHTML = '';
+                if (employeesToRender.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">Nenhum funcionário encontrado.</td></tr>';
+                    return;
+                }
+                employeesToRender.forEach(member => {
+                    // Adicionamos valores padrão para os campos que não vêm da API ainda
+                    const workedHours = member.workedHours || 6;
+                    const dailyGoal = member.dailyGoal || 8;
+
+                    const isGoalMet = workedHours >= dailyGoal;
+                    const progressClass = isGoalMet ? 'success' : 'warning';
+                    const row = document.createElement('tr');
+                    if (member.profile) {
+                        row.innerHTML = `
+                            <td>${member.nome}</td> <td>${member.profile.perfil}</td> <td>
+                                <div class="daily-goal-cell ${progressClass}">
+                                    <i data-lucide="clock"></i>
+                                    <span>${workedHours}h / ${dailyGoal}h</span>
+                                </div>
+                            </td>
+                            <td><button class="btn-outline" data-employee-id="${member.id}">Ver</button></td>`;
+                        tableBody.appendChild(row);
+                    }
+
+                });
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            };
+
+            const filterAndRender = () => {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                if (!searchTerm) {
+                    renderTeamTable(teamData);
+                    return;
+                }
+                const filteredEmployees = teamData.filter(member => member.name.toLowerCase().includes(searchTerm));
+                renderTeamTable(filteredEmployees);
+            };
+
+            searchBtn.addEventListener('click', filterAndRender);
+            searchInput.addEventListener('keyup', filterAndRender);
+
+            tableBody.addEventListener('click', (e) => {
+                if (e.target && e.target.classList.contains('btn-outline')) {
+                    const employeeId = parseInt(e.target.dataset.employeeId);
+                    // Nota: a função openEmployeeModal ainda usa dados estáticos.
+                    // Teremos que migrá-la também no futuro.
+                    this.openEmployeeModal(employeeId);
+                }
             });
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
+
+            if (btnShowRegister) {
+                btnShowRegister.addEventListener('click', () => this.openRegisterModal());
             }
-        };
 
-        /**
-         * Filtra os funcionários com base no termo de busca e renderiza a tabela.
-         */
-        const filterAndRender = () => {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            if (!searchTerm) {
-                renderTeamTable(teamData);
-                return;
-            }
-            const filteredEmployees = teamData.filter(member =>
-                member.name.toLowerCase().includes(searchTerm)
-            );
-            renderTeamTable(filteredEmployees);
-        };
+            renderTeamTable(teamData);
 
-        // Adiciona os eventos para a funcionalidade de busca
-        searchBtn.addEventListener('click', filterAndRender);
-        searchInput.addEventListener('keyup', filterAndRender);
-
-        // **CORREÇÃO ADICIONADA AQUI**
-        // Adiciona evento de clique para abrir o modal de "Ver"
-        tableBody.addEventListener('click', (e) => {
-            if (e.target && e.target.classList.contains('btn-outline')) {
-                const employeeId = parseInt(e.target.dataset.employeeId);
-                this.openEmployeeModal(employeeId);
-            }
-        });
-
-        // Adiciona evento de clique para abrir o modal de "Cadastrar"
-        if (btnShowRegister) {
-            btnShowRegister.addEventListener('click', () => this.openRegisterModal());
+        } catch (error) {
+            console.error("Erro ao carregar dados da equipe:", error);
+            pageContainer.innerHTML = `<div class="page-header"><h1>Erro</h1><p>Não foi possível carregar os dados da equipe.</p></div>`;
         }
-
-        // Renderização inicial da tabela
-        renderTeamTable(teamData);
     }
 
     updateClock() {
@@ -979,31 +979,36 @@ class PontoMaxApp {
     }
 
     // Em app.js, adicione estas duas novas funções à classe PontoMaxApp
-    openEmployeeModal(employeeId) {
-        // Acessa os dados da equipe, que estão dentro de loadEquipeData. Idealmente, estariam no escopo da classe.
-        // Para simplificar, vamos re-declarar aqui. Em uma app real, this.teamData seria melhor.
-        const teamData = [
-            { id: 1, initials: 'JR', name: 'Jean Rufino', fullname: 'Jean Carlos Rufino', email: 'jean.rufino@pontomax.com.br', role: 'Desenvolvedor', workedHours: 6, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
-            { id: 2, initials: 'AC', name: 'Anna Claudia', fullname: 'Anna Claudia Barros da Silveira', email: 'anna.silveira@pontomax.com.br', role: 'Desenvolvedor(a)', workedHours: 6, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
-            { id: 3, initials: 'EF', name: 'Eduarda Fachola', fullname: 'Eduarda Fachola', email: 'eduarda.fachola@pontomax.com.br', role: 'Product Owner', workedHours: 4, dailyGoal: 8, salary: 8000, monthlyHours: 160 },
-            { id: 4, initials: 'GS', name: 'Guilherme Sales', fullname: 'Guilherme Sales', email: 'guilherme.sales@pontomax.com.br', role: 'Desenvolvedor', workedHours: 0, dailyGoal: 8, salary: 5000, monthlyHours: 160 },
-            { id: 5, initials: 'HS', name: 'Heitor Sales', fullname: 'Heitor Sales', email: 'heitor.sales@pontomax.com.br', role: 'Scrum Master', workedHours: 8, dailyGoal: 8, salary: 7000, monthlyHours: 160 }
-        ];
+    async openEmployeeModal(employeeId) {
+        const modal = document.getElementById('employee-modal');
+        // Guardamos o ID no próprio elemento do modal para fácil acesso
+        modal.dataset.employeeId = employeeId;
+        try {
+            const employee = await window.authManager.apiCall(`/equipe/${employeeId}/`);
+            if (!employee) return;
 
-        const employee = teamData.find(m => m.id === employeeId);
-        if (!employee) return;
+            // Popula o modal com os dados vindos do backend
+            document.getElementById('modal-fullname').value = employee.nome;
+            document.getElementById('modal-email').value = employee.email;
+            // MUDANÇA: Acessando o perfil dentro do objeto 'profile'
+            document.getElementById('modal-role').value = employee.profile.perfil;
+            document.getElementById('modal-initials').textContent = employee.nome.split(' ').map(n => n[0]).join('');
 
-        // Popula o modal com os dados
-        document.getElementById('modal-initials').textContent = employee.initials;
-        document.getElementById('modal-fullname').value = employee.fullname;
-        document.getElementById('modal-email').value = employee.email;
-        document.getElementById('modal-role').value = employee.role;
-        document.getElementById('modal-salary').value = employee.salary.toFixed(2).replace('.', ',');
-        document.getElementById('modal-monthly-hours').value = employee.monthlyHours;
-        document.getElementById('modal-hourly-rate').value = (employee.salary / employee.monthlyHours).toFixed(2).replace('.', ',');
+            // MUDANÇA: Acessando os campos dentro do objeto 'profile'
+            document.getElementById('modal-salary').value =
+                parseFloat(employee.profile.salario_base || 0).toFixed(2).replace('.', ',');
 
-        // Mostra o modal
-        document.getElementById('employee-modal').classList.remove('hidden');
+            document.getElementById('modal-monthly-hours').value =
+                employee.profile.horas_mensais || 0;
+
+            // O valor da hora já está no nível principal, então continua igual
+            document.getElementById('modal-hourly-rate').value =
+                parseFloat(employee.valor_hora || 0).toFixed(2).replace('.', ',');
+            modal.classList.remove('hidden');
+        } catch (error) {
+            console.error("Erro ao buscar detalhes do funcionário:", error);
+            window.pontoMaxApp.showToast('Erro', 'Não foi possível carregar os dados do funcionário.', 'error');
+        }
     }
 
     closeEmployeeModal() {
@@ -1137,6 +1142,104 @@ class PontoMaxApp {
             sendButton.disabled = false; // Habilita o botão de envio
         }, 2000); // 2 segundos, igual à duração da transição do CSS
     }
+
+    async handleRegisterEmployee(e) {
+        e.preventDefault();
+
+        // 1. Lemos os valores dos campos
+        const salarioStr = document.getElementById('register-salary').value.replace(',', '.');
+        const horasStr = document.getElementById('register-monthly-hours').value;
+
+        // 2. Montamos o payload, tratando campos vazios e convertendo para números
+        const payload = {
+            first_name: document.getElementById('register-fullname').value.split(' ')[0] || '',
+            last_name: document.getElementById('register-fullname').value.split(' ').slice(1).join(' '),
+            email: document.getElementById('register-email').value,
+            password: document.getElementById('register-password').value,
+            profile: {
+                perfil: document.getElementById('register-role').value,
+                // Lógica igual à da função de ATUALIZAR:
+                salario_base: salarioStr ? parseFloat(salarioStr) : null,
+                horas_mensais: horasStr ? parseInt(horasStr) : null
+            }
+        };
+
+        // 3. O bloco try/catch para enviar para a API (com melhor log de erro)
+        try {
+            await window.authManager.apiCall('/equipe/', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            this.showToast('Sucesso', 'Funcionário cadastrado com sucesso!', 'success');
+            this.closeRegisterModal();
+            this.loadEquipeData(); // Recarrega a lista da equipe
+        } catch (error) {
+            // Tenta mostrar um erro mais específico (ex: "email já existe")
+            const errorMessage = error?.email?.[0] || 'Não foi possível cadastrar o funcionário.';
+            this.showToast('Erro', errorMessage, 'error');
+            console.error("Erro ao cadastrar funcionário:", error);
+        }
+    }
+
+    async handleUpdateEmployee(employeeId) {
+        // 1. Lemos e limpamos os dados dos campos
+        const fullname = document.getElementById('modal-fullname').value.trim();
+        const email = document.getElementById('modal-email').value.trim();
+        const perfil = document.getElementById('modal-role').value.trim(); // 'perfil' é o cargo
+        const salarioStr = document.getElementById('modal-salary').value.replace(',', '.');
+        const horasStr = document.getElementById('modal-monthly-hours').value;
+
+        // 2. VALIDAÇÃO: Verificamos se os campos obrigatórios não estão vazios
+        if (!fullname || !email || !perfil) {
+            this.showToast('Erro de Validação', 'Nome, e-mail e cargo são obrigatórios.', 'error');
+            return; // Impede o envio da requisição
+        }
+
+        // 3. Montamos o payload para enviar
+        const payload = {
+            first_name: fullname.split(' ')[0] || '',
+            last_name: fullname.split(' ').slice(1).join(' '),
+            email: email,
+            profile: {
+                perfil: perfil,
+                salario_base: salarioStr ? parseFloat(salarioStr) : null,
+                horas_mensais: horasStr ? parseInt(horasStr) : null
+            }
+        };
+
+        // 4. O bloco try/catch para enviar para a API continua o mesmo
+        try {
+            await window.authManager.apiCall(`/equipe/${employeeId}/`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            this.showToast('Sucesso', 'Alterações salvas com sucesso!', 'success');
+            this.closeEmployeeModal();
+            this.loadEquipeData();
+        } catch (error) {
+            const errorMessage = error?.email?.[0] || 'Não foi possível salvar as alterações.';
+            this.showToast('Erro', errorMessage, 'error');
+            console.error("Erro ao atualizar funcionário:", error);
+        }
+    }
+
+    async handleDeleteEmployee(employeeId) {
+        if (!confirm('Tem certeza que deseja remover este funcionário? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+
+        try {
+            await window.authManager.apiCall(`/equipe/${employeeId}/`, {
+                method: 'DELETE'
+            });
+            this.showToast('Sucesso', 'Funcionário removido com sucesso!', 'success');
+            this.closeEmployeeModal();
+            this.loadEquipeData(); // Recarrega a lista
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível remover o funcionário.', 'error');
+        }
+    }
+
 }
 
 // Inicializar aplicação
