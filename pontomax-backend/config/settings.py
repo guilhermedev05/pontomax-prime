@@ -130,7 +130,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5500", # Se você usa o Live Server do VS Code
     "http://127.0.0.1:5500",
-    "https://guilhermedev05.github.io/pontomax-prime/",
     "null", # Para permitir requisições de file:// (quando você abre o index.html diretamente)
 ]
 
