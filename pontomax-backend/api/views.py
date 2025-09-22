@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from datetime import date
 from .models import Holerite, RegistroPonto
 from itertools import groupby
-from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer
+from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -14,7 +14,74 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 
+def calcular_saldo_banco_horas(user):
+    """
+    Função reutilizável que calcula o saldo total de horas para um usuário.
+    """
+    punches = RegistroPonto.objects.filter(user=user).order_by('timestamp')
+    total_balance_hours = 0
+    jornada_diaria_em_horas = 8.0
 
+    for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
+        punches_in_day = list(punches_in_day_iter)
+        total_seconds_in_day = 0
+        
+        for i in range(0, len(punches_in_day) - 1, 2):
+            start_punch = punches_in_day[i]
+            end_punch = punches_in_day[i+1]
+            if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
+                time_diff = end_punch.timestamp - start_punch.timestamp
+                total_seconds_in_day += time_diff.total_seconds()
+        
+        worked_hours = total_seconds_in_day / 3600
+        if worked_hours > 0:
+            daily_balance = worked_hours - jornada_diaria_em_horas
+            total_balance_hours += daily_balance
+            
+    return round(total_balance_hours, 2)
+
+def calcular_saldo_mensal(user, ano, mes):
+    """
+    Calcula os créditos e débitos de um usuário para um mês/ano específico.
+    """
+    # Filtra os registros de ponto para o usuário, ano e mês fornecidos
+    punches = RegistroPonto.objects.filter(
+        user=user,
+        timestamp__year=ano,
+        timestamp__month=mes
+    ).order_by('timestamp')
+
+    total_credits_hours = 0
+    total_debits_hours = 0
+    jornada_diaria_em_horas = 8.0
+
+    # Agrupa os registros por dia
+    for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
+        punches_in_day = list(punches_in_day_iter)
+        total_seconds_in_day = 0
+        
+        # Calcula o total de horas trabalhadas no dia
+        for i in range(0, len(punches_in_day) - 1, 2):
+            start_punch = punches_in_day[i]
+            end_punch = punches_in_day[i+1]
+            if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
+                time_diff = end_punch.timestamp - start_punch.timestamp
+                total_seconds_in_day += time_diff.total_seconds()
+        
+        worked_hours = total_seconds_in_day / 3600
+
+        # Calcula o saldo do dia e separa em crédito ou débito
+        if worked_hours > 0:
+            daily_balance = worked_hours - jornada_diaria_em_horas
+            if daily_balance > 0:
+                total_credits_hours += daily_balance
+            else:
+                total_debits_hours += abs(daily_balance)
+            
+    return {
+        'credits': round(total_credits_hours, 2),
+        'debits': round(total_debits_hours, 2)
+    }
 # --- Views da API ---
 
 class HoleriteView(APIView):
@@ -37,7 +104,6 @@ class HoleriteView(APIView):
         except Holerite.DoesNotExist:
             return Response({'error': 'Nenhum holerite encontrado para este período.'}, status=status.HTTP_404_NOT_FOUND)
 
-
 class UserProfileView(APIView):
     """
     View para buscar os detalhes do usuário atualmente logado (autenticado via token).
@@ -48,7 +114,6 @@ class UserProfileView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
-
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -161,43 +226,47 @@ class RegistrosView(ListAPIView):
     
 class BancoHorasSaldoView(APIView):
     """
-    View que calcula e retorna o saldo total do banco de horas
-    para o usuário autenticado.
+    View que retorna o saldo total do banco de horas para o usuário autenticado.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # 1. Busca todos os registros de ponto do usuário
-        punches = RegistroPonto.objects.filter(user=request.user).order_by('timestamp')
-
-        # 2. Calcula o saldo total
-        total_balance_hours = 0
-        # Agrupa os registros por dia
-        for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
-            punches_in_day = list(punches_in_day_iter)
-            total_seconds_in_day = 0
-            
-            # Itera sobre os registros do dia em pares (entrada/saída)
-            for i in range(0, len(punches_in_day) - 1, 2):
-                start_punch = punches_in_day[i]
-                end_punch = punches_in_day[i+1]
-                
-                if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
-                    time_diff = end_punch.timestamp - start_punch.timestamp
-                    total_seconds_in_day += time_diff.total_seconds()
-            
-            worked_hours = total_seconds_in_day / 3600
-            
-            # Lógica de cálculo de saldo (assumindo jornada de 8h)
-            # Acumula a diferença (positiva ou negativa)
-            if worked_hours > 0: # Só considera dias trabalhados
-                jornada_diaria = 8.0
-                daily_balance = worked_hours - jornada_diaria
-                total_balance_hours += daily_balance
-
-        # 3. Prepara os dados para a resposta
-        data = {'saldo_banco_horas': round(total_balance_hours, 2)}
+        saldo = calcular_saldo_banco_horas(request.user)
+        
+        data = {'saldo_banco_horas': saldo}
         serializer = BancoHorasSaldoSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         
         return Response(serializer.validated_data)
+
+class BancoHorasEquipeView(ListAPIView):
+    """
+    View que lista o saldo do banco de horas de todos os funcionários da equipe.
+    """
+    serializer_class = BancoHorasEquipeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        equipe = User.objects.exclude(pk=self.request.user.pk)
+        
+        # Pega o mês e ano atuais para o cálculo mensal
+        hoje = date.today()
+        ano_atual = hoje.year
+        mes_atual = hoje.month
+        
+        lista_saldos = []
+        for funcionario in equipe:
+            # Chama a função de saldo total (que já tínhamos)
+            saldo_total = calcular_saldo_banco_horas(funcionario)
+            
+            # MUDANÇA: Chama a nova função para o saldo do mês
+            saldo_mensal = calcular_saldo_mensal(funcionario, ano_atual, mes_atual)
+            
+            lista_saldos.append({
+                'name': funcionario.get_full_name(),
+                'balance': saldo_total,
+                'credits': saldo_mensal['credits'], # <-- Usa o valor dinâmico
+                'debits': saldo_mensal['debits']    # <-- Usa o valor dinâmico
+            })
+            
+        return lista_saldos

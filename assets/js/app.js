@@ -431,20 +431,11 @@ class PontoMaxApp {
         fetchAndRenderRecords();
     }
 
-    loadBancoHorasData() {
+    async loadBancoHorasData() {
         const pageContainer = document.getElementById('banco-horas-page');
         if (!pageContainer) return;
 
-        // Mock data para o banco de horas
-        const bankHoursData = [
-            { name: 'Jean Rufino', balance: 5.5, credits: 6.5, debits: 1 },
-            { name: 'Anna Claudia', balance: 3.33, credits: 4.33, debits: 1 },
-            { name: 'Eduarda Fachola', balance: 5.5, credits: 6.5, debits: 1 },
-            { name: 'Guilherme Sales', balance: -2.5, credits: 4.0, debits: 6.5 },
-            { name: 'Heitor Sales', balance: 0, credits: 5, debits: 5 }
-        ];
-
-        // HTML principal da página
+        // HTML principal da página (permanece o mesmo)
         pageContainer.innerHTML = `
         <div class="page-header">
             <h1>Gestão do Banco de Horas</h1>
@@ -452,10 +443,7 @@ class PontoMaxApp {
         </div>
         <div class="main-card">
             <div class="card-header-flex">
-                <div>
-                    <h2><i data-lucide="bar-chart-3"></i> Banco de Horas</h2>
-                    <p>Filtre os saldos por status</p>
-                </div>
+                <div><h2><i data-lucide="bar-chart-3"></i> Banco de Horas</h2><p>Filtre os saldos por status</p></div>
             </div>
             <div class="card-content">
                 <div class="filter-btn-group">
@@ -464,72 +452,65 @@ class PontoMaxApp {
                     <button class="btn-filter" data-filter="negativos">Negativos</button>
                     <button class="btn-filter" data-filter="zerados">Zerados</button>
                 </div>
-                <div class="table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Funcionário</th>
-                                <th>Saldo Atual</th>
-                                <th>Créditos Mês</th>
-                                <th>Débitos Mês</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bank-hours-table-body">
-                            </tbody>
-                    </table>
-                </div>
+                <div class="table-wrapper"><table class="data-table">
+                    <thead><tr><th>Funcionário</th><th>Saldo Atual</th><th>Créditos Mês</th><th>Débitos Mês</th></tr></thead>
+                    <tbody id="bank-hours-table-body"></tbody>
+                </table></div>
             </div>
-        </div>
-    `;
+        </div>`;
 
         const tableBody = document.getElementById('bank-hours-table-body');
         const filterButtons = pageContainer.querySelectorAll('.btn-filter');
 
-        // Função para renderizar a tabela com base no filtro
-        const renderTable = (filter) => {
-            tableBody.innerHTML = ''; // Limpa a tabela
+        try {
+            // MUDANÇA: Busca os dados da API
+            const bankHoursData = await window.authManager.apiCall('/banco-horas/equipe/');
 
-            let filteredData = bankHoursData;
-            if (filter === 'positivos') {
-                filteredData = bankHoursData.filter(m => m.balance > 0);
-            } else if (filter === 'negativos') {
-                filteredData = bankHoursData.filter(m => m.balance < 0);
-            } else if (filter === 'zerados') {
-                filteredData = bankHoursData.filter(m => m.balance === 0);
-            }
+            // Função para renderizar a tabela (lógica existente, mas agora dentro do try/catch)
+            const renderTable = (filter) => {
+                tableBody.innerHTML = '';
+                let filteredData = bankHoursData;
 
-            if (filteredData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum registro encontrado para este filtro.</td></tr>';
-                return;
-            }
+                if (filter === 'positivos') filteredData = bankHoursData.filter(m => m.balance > 0);
+                else if (filter === 'negativos') filteredData = bankHoursData.filter(m => m.balance < 0);
+                else if (filter === 'zerados') filteredData = bankHoursData.filter(m => m.balance === 0);
 
-            filteredData.forEach(member => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                <td>${member.name}</td>
-                <td class="${member.balance === 0 ? '' : (member.balance > 0 ? 'positive' : 'negative')}">
-                    ${member.balance === 0 ? '' : (member.balance > 0 ? '+' : '-')} ${this.formatHours(Math.abs(member.balance), true)}
-                </td>
-                <td class="positive">+ ${this.formatHours(member.credits, true)}</td>
-                <td class="negative">- ${this.formatHours(member.debits, true)}</td>
-            `;
-                tableBody.appendChild(row);
+                if (filteredData.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum registro encontrado para este filtro.</td></tr>';
+                    return;
+                }
+
+                filteredData.forEach(member => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                    <td>${member.name}</td>
+                    <td class="${member.balance === 0 ? '' : (member.balance > 0 ? 'positive' : 'negative')}">
+                        ${member.balance === 0 ? '' : (member.balance > 0 ? '+' : '-')} ${this.formatHours(Math.abs(member.balance), true)}
+                    </td>
+                    <td class="positive">+ ${this.formatHours(member.credits, true)}</td>
+                    <td class="negative">- ${this.formatHours(member.debits, true)}</td>
+                `;
+                    tableBody.appendChild(row);
+                });
+            };
+
+            // Adiciona evento de clique aos botões de filtro
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    renderTable(button.dataset.filter);
+                });
             });
-        };
 
-        // Adiciona evento de clique aos botões de filtro
-        filterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                renderTable(button.dataset.filter);
-            });
-        });
-
-        // Renderização inicial
-        renderTable('todos');
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
+            renderTable('todos'); // Renderização inicial
+        } catch (error) {
+            console.error("Erro ao carregar dados do banco de horas:", error);
+            pageContainer.innerHTML = `<div class="page-header"><h1>Erro</h1><p>Não foi possível carregar os dados.</p></div>`;
+        } finally {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
         }
     }
 

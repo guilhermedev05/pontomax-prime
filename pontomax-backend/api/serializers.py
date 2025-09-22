@@ -138,3 +138,16 @@ class BancoHorasSaldoSerializer(serializers.Serializer):
 
     class Meta:
         fields = ['saldo_banco_horas']
+        
+class BancoHorasEquipeSerializer(serializers.Serializer):
+    """
+    Serializer para a lista de saldos de banco de horas da equipe.
+    """
+    name = serializers.CharField()
+    balance = serializers.FloatField()
+    # Adicionamos campos de exemplo para manter a UI consistente
+    credits = serializers.FloatField()
+    debits = serializers.FloatField()
+
+    class Meta:
+        fields = ['name', 'balance', 'credits', 'debits']

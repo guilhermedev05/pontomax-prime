@@ -1,7 +1,7 @@
 # api/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import HoleriteView, UserProfileView, UserViewSet, RegistroPontoViewSet, RegistrosView, BancoHorasSaldoView
+from .views import BancoHorasEquipeView, HoleriteView, UserProfileView, UserViewSet, RegistroPontoViewSet, RegistrosView, BancoHorasSaldoView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -18,6 +18,7 @@ urlpatterns = [
     path('holerites/', HoleriteView.as_view(), name='holerites'),
     path('registros/', RegistrosView.as_view(), name='registros'),
     path('banco-horas/saldo/', BancoHorasSaldoView.as_view(), name='banco-horas-saldo'),
+    path('banco-horas/equipe/', BancoHorasEquipeView.as_view(), name='banco-horas-equipe'),
     # Adiciona as URLs geradas pelo router à nossa lista.
     path('', include(router.urls)),
 ]
