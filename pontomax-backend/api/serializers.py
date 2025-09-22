@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Holerite, Vencimento, Desconto, Profile
+from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto
 
 # --- Serializers para o Holerite ---
 # (As classes VencimentoSerializer, DescontoSerializer e HoleriteSerializer continuam as mesmas)
@@ -108,3 +108,11 @@ class UserSerializer(serializers.ModelSerializer):
 
         # Chama o 'super' para salvar as outras alterações (first_name, email, etc.)
         return super().update(instance, validated_data)
+
+class RegistroPontoSerializer(serializers.ModelSerializer):
+    time = serializers.DateTimeField(source='timestamp', format='%H:%M', read_only=True)
+
+    class Meta:
+        model = RegistroPonto
+        fields = ['id', 'time', 'tipo']
+        read_only_fields = ['tipo']

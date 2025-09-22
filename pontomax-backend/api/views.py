@@ -3,8 +3,9 @@
 # --- Imports ---
 # Modelos do Django e do seu app
 from django.contrib.auth.models import User
-from .models import Holerite
-
+from datetime import date
+from .models import Holerite, RegistroPonto
+from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -68,3 +69,35 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Garante que o gestor não se veja na sua própria lista de equipe
         return self.queryset.exclude(pk=self.request.user.pk)
+    
+class RegistroPontoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para listar e criar registros de ponto para o usuário logado.
+    """
+    serializer_class = RegistroPontoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Retorna apenas os registros do usuário logado e do dia de hoje
+        return RegistroPonto.objects.filter(
+            user=self.request.user,
+            timestamp__date=date.today()
+        )
+
+    def perform_create(self, serializer):
+        # Lógica para determinar o próximo tipo de registro
+        queryset = self.get_queryset()
+        last_punch = queryset.last()
+        
+        next_type = 'entrada' # Padrão é entrada
+        if last_punch:
+            type_map = {
+                'entrada': 'saida_almoco',
+                'saida_almoco': 'entrada_almoco',
+                'entrada_almoco': 'saida'
+            }
+            # Se o último tipo estiver no mapa, pega o próximo. Senão, é uma nova entrada.
+            next_type = type_map.get(last_punch.tipo, 'entrada')
+        
+        # Salva o novo registro com o usuário logado e o tipo calculado
+        serializer.save(user=self.request.user, tipo=next_type)

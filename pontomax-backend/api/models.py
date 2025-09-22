@@ -59,3 +59,21 @@ class Desconto(models.Model):
     
     def __str__(self):
         return f"{self.descricao} - R$ {self.valor}"
+    
+class RegistroPonto(models.Model):
+    TIPO_CHOICES = [
+        ('entrada', 'Entrada'),
+        ('saida_almoco', 'Saída Almoço'),
+        ('entrada_almoco', 'Volta Almoço'),
+        ('saida', 'Saída'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='registros_ponto')
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Data e Hora do Registro")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_tipo_display()} em {self.timestamp.strftime('%d/%m/%Y %H:%M')}"
