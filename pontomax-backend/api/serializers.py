@@ -151,3 +151,24 @@ class BancoHorasEquipeSerializer(serializers.Serializer):
 
     class Meta:
         fields = ['name', 'balance', 'credits', 'debits']
+        
+class DashboardStatsSerializer(serializers.Serializer):
+    """ Serializer para os cards de estatísticas rápidas. """
+    pendentes = serializers.IntegerField()
+    aniversariantes = serializers.IntegerField()
+    ativos = serializers.IntegerField()
+    ausentes = serializers.IntegerField()
+
+class TeamStatusSerializer(serializers.Serializer):
+    """ Serializer para a lista de status da equipe em tempo real. """
+    initials = serializers.CharField()
+    name = serializers.CharField()
+    status = serializers.CharField()
+    lastPunch = serializers.CharField()
+    hoursToday = serializers.CharField()
+
+class GestorDashboardSerializer(serializers.Serializer):
+    """ Serializer principal que junta todas as partes do dashboard. """
+    gestorName = serializers.CharField()
+    stats = DashboardStatsSerializer()
+    teamStatus = TeamStatusSerializer(many=True)

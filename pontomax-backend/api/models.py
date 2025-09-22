@@ -78,3 +78,32 @@ class RegistroPonto(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.get_tipo_display()} em {self.timestamp.strftime('%d/%m/%Y %H:%M')}"
+    
+class Fechamento(models.Model):
+    STATUS_CHOICES = [
+        ('INICIADO', 'Iniciado'),
+        ('REVISAO', 'Em Revisão'),
+        ('GERANDO', 'Gerando Holerites'),
+        ('CONCLUIDO', 'Concluído'),
+    ]
+
+    periodo = models.CharField(max_length=7, help_text="Formato: AAAA-MM", unique=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='INICIADO')
+    iniciado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='fechamentos_iniciados')
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_conclusao = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Fechamento de {self.periodo} - Status: {self.get_status_display()}"
+
+
+class HoleriteGerado(models.Model):
+    fechamento = models.ForeignKey(Fechamento, on_delete=models.CASCADE, related_name='holerites_gerados')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='holerites_recebidos')
+    salario_bruto = models.DecimalField(max_digits=10, decimal_places=2)
+    total_descontos = models.DecimalField(max_digits=10, decimal_places=2)
+    salario_liquido = models.DecimalField(max_digits=10, decimal_places=2)
+    enviado = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Holerite de {self.user.username} para {self.fechamento.periodo}"

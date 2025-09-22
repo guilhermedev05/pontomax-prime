@@ -302,7 +302,10 @@ class PontoMaxApp {
             case 'dashboard':
                 // AQUI ESTÁ A LÓGICA PRINCIPAL QUE PRECISA SER CORRIGIDA
                 const currentUser = window.authManager.getCurrentUser();
-                if (currentUser && (currentUser.perfil === 'GESTOR' || currentUser.perfil === 'ADMIN')) {
+                console.log("Verificando perfil do usuário no Dashboard:", currentUser);
+
+                if (currentUser && (currentUser.profile.perfil === 'GESTOR' || currentUser.profile.perfil === 'ADMIN')) {
+                    console.log(`Perfil: ${currentUser.profile.perfil}`)
                     this.loadGestorDashboardData(); // Carrega o painel do GESTOR
                 } else {
                     if (!window.dashboardManager) {
@@ -598,102 +601,49 @@ class PontoMaxApp {
         }
     }
 
-    loadGestorDashboardData() {
-        const pageContainer = document.getElementById('dashboard-page');
-        if (!pageContainer) return;
+    async loadGestorDashboardData() {
+    const pageContainer = document.getElementById('dashboard-page');
+    if (!pageContainer) return;
 
-        const currentUser = window.authManager.getCurrentUser();
-        if (!currentUser || (currentUser.perfil !== 'GESTOR' && currentUser.perfil !== 'ADMIN')) {
-            // Se não for gestor, mostra o dashboard de colaborador (ou uma mensagem)
-            // A lógica do dashboard de colaborador já está em dashboard.js
-            return;
-        }
+    try {
+        // MUDANÇA: Busca os dados da API em vez de usar o mock
+        const gestorData = await window.authManager.apiCall('/dashboard-gestor/');
 
-        // Mock data para o painel do gestor
-        const gestorData = {
-            gestorName: currentUser.nome.split(' ')[0],
-            stats: { pendentes: 2, aniversariantes: 1, ativos: 12, ausentes: 3 },
-            teamStatus: [
-                { initials: 'JR', name: 'Jean Rufino', status: 'Trabalhando', lastPunch: '08:00', hoursToday: '05:30' },
-                { initials: 'AC', name: 'Anna Claudia', status: 'Em pausa', lastPunch: '12:00', hoursToday: '01:30' },
-                { initials: 'EF', name: 'Eduarda Fachola', status: 'Trabalhando', lastPunch: '12:05', hoursToday: '01:25' },
-                { initials: 'GS', name: 'Guilherme Sales', status: 'Ausente', lastPunch: null, hoursToday: '00:00' },
-                { initials: 'HS', name: 'Heitor Sales', status: 'Finalizado', lastPunch: '06:00', hoursToday: '06:00' }
-            ],
-            weeklySummary: { workedHours: '342h 30m', avgPerEmployee: '7h 45m', presenceRate: '94.2%', extraHours: '15h 20m' }
-        };
+        // O RESTO DO CÓDIGO PARA RENDERIZAR O HTML CONTINUA EXATAMENTE O MESMO
+        // A API foi desenhada para retornar os dados no formato que esta função já espera.
 
-        // HTML completo do Painel de Controle
         pageContainer.innerHTML = `
-        <div class="page-header">
-            <h1>Painel de Controle</h1>
-            <p>Olá, ${gestorData.gestorName}! Aqui está o resumo da sua equipe</p>
-        </div>
-        <div class="summary-cards-grid">
-            <div class="summary-card">
-                <div class="card-content">
-                    <div class="value warning">${gestorData.stats.pendentes}</div>
-                    <div class="label">Ajustes pendentes</div>
-                    <div class="sub-label">Solicitações para revisar</div>
-                </div>
-                <i data-lucide="alert-triangle" class="card-icon warning"></i>
+            <div class="page-header">
+                <h1>Painel de Controle</h1>
+                <p>Olá, ${gestorData.gestorName}! Aqui está o resumo da sua equipe</p>
             </div>
-            <div class="summary-card">
-                <div class="card-content">
-                    <div class="value">${gestorData.stats.aniversariantes}</div>
-                    <div class="label">Aniversariantes</div>
-                    <div class="sub-label">Esta semana</div>
+            <div class="summary-cards-grid">
+                <div class="summary-card">
+                    <div class="card-content"><div class="value warning">${gestorData.stats.pendentes}</div><div class="label">Ajustes pendentes</div></div>
+                    <i data-lucide="alert-triangle" class="card-icon warning"></i>
                 </div>
-                <i data-lucide="calendar" class="card-icon"></i>
-            </div>
-            <div class="summary-card">
-                <div class="card-content">
-                    <div class="value success">${gestorData.stats.ativos}</div>
-                    <div class="label">Ativos hoje</div>
-                    <div class="sub-label">Colaboradores trabalhando</div>
+                <div class="summary-card">
+                    <div class="card-content"><div class="value">${gestorData.stats.aniversariantes}</div><div class="label">Aniversariantes</div></div>
+                    <i data-lucide="calendar" class="card-icon"></i>
                 </div>
-                <i data-lucide="user-check" class="card-icon success"></i>
-            </div>
-            <div class="summary-card">
-                <div class="card-content">
-                    <div class="value danger">${gestorData.stats.ausentes}</div>
-                    <div class="label">Ausentes</div>
-                    <div class="sub-label">Não registraram ponto</div>
+                <div class="summary-card">
+                    <div class="card-content"><div class="value success">${gestorData.stats.ativos}</div><div class="label">Ativos hoje</div></div>
+                    <i data-lucide="user-check" class="card-icon success"></i>
                 </div>
-                <i data-lucide="user-x" class="card-icon danger"></i>
-            </div>
-        </div>
-        <div class="main-card">
-            <div class="card-header-flex">
-                <div>
-                    <h2>Status da Equipe em Tempo Real</h2>
-                    <p>Acompanhe o status atual de todos os colaboradores</p>
+                <div class="summary-card">
+                    <div class="card-content"><div class="value danger">${gestorData.stats.ausentes}</div><div class="label">Ausentes</div></div>
+                    <i data-lucide="user-x" class="card-icon danger"></i>
                 </div>
             </div>
-            <div class="team-status-table-wrapper">
-                <table class="team-status-table">
-                    <thead>
-                        <tr>
-                            <th>Funcionário</th>
-                            <th>Status</th>
-                            <th>Último Registro</th>
-                            <th>Horas Hoje</th>
-                        </tr>
-                    </thead>
+            <div class="main-card">
+                <div class="card-header-flex"><div><h2>Status da Equipe em Tempo Real</h2><p>Acompanhe o status atual de todos os colaboradores</p></div></div>
+                <div class="team-status-table-wrapper"><table class="team-status-table">
+                    <thead><tr><th>Funcionário</th><th>Status</th><th>Último Registro</th><th>Horas Hoje</th></tr></thead>
                     <tbody id="team-status-body"></tbody>
-                </table>
-            </div>
-            <div class="card-footer">
-                <!-- BOTÃO MODIFICADO COM UM ID -->
-                <button id="view-team-details-btn" class="btn-primary">Ver Detalhes da Equipe</button>
-            </div>
-        </div>
-        <div class="bottom-section-grid">
-            <!-- ... (código das ações rápidas e resumo semanal) ... -->
-        </div>
-    `;
+                </table></div>
+                <div class="card-footer"><button id="view-team-details-btn" class="btn-primary">Ver Detalhes da Equipe</button></div>
+            </div>`;
 
-        // Popula a tabela de status da equipe (código existente)
         const teamStatusBody = document.getElementById('team-status-body');
         teamStatusBody.innerHTML = '';
         const statusClasses = { 'Trabalhando': 'working', 'Em pausa': 'paused', 'Ausente': 'absent', 'Finalizado': 'finished' };
@@ -702,36 +652,31 @@ class PontoMaxApp {
         gestorData.teamStatus.forEach(member => {
             const row = document.createElement('tr');
             row.innerHTML = `
-            <td><div class="employee-cell"><div class="employee-initials">${member.initials}</div><span>${member.name}</span></div></td>
-            <td><div class="status-badge ${statusClasses[member.status] || ''}"><i data-lucide="${statusIcons[member.status] || 'circle'}"></i><span>${member.status}</span></div></td>
-            <td>${member.lastPunch || '--:--'}</td>
-            <td>${member.hoursToday}</td>
-        `;
+                <td><div class="employee-cell"><div class="employee-initials">${member.initials}</div><span>${member.name}</span></div></td>
+                <td><div class="status-badge ${statusClasses[member.status] || ''}"><i data-lucide="${statusIcons[member.status] || 'circle'}"></i><span>${member.status}</span></div></td>
+                <td>${member.lastPunch}</td>
+                <td>${member.hoursToday}</td>`;
             teamStatusBody.appendChild(row);
         });
 
-        // =========================================================================
-        // NOVA LÓGICA ADICIONADA AQUI
-        // =========================================================================
-        // 1. Encontra o botão que acabamos de criar
         const viewTeamBtn = document.getElementById('view-team-details-btn');
-
-        // 2. Adiciona o "ouvinte" de clique
         if (viewTeamBtn) {
             viewTeamBtn.addEventListener('click', () => {
-                // 3. Chama a função de navegação para a página 'equipe'
-                // (Assumindo que esta função está dentro da classe PontoMaxApp)
                 if (window.pontoMaxApp) {
                     window.pontoMaxApp.navigateToPage('equipe');
                 }
             });
         }
-
-        // Recria todos os ícones da Lucide na página
+        
+    } catch (error) {
+        console.error("Erro ao carregar dados do dashboard do gestor:", error);
+        pageContainer.innerHTML = `<div class="page-header"><h1>Erro</h1><p>Não foi possível carregar os dados do painel de controle.</p></div>`;
+    } finally {
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
     }
+}
 
     async loadEquipeData() {
         const pageContainer = document.getElementById('equipe-page');

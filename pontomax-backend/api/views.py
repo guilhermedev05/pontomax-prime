@@ -4,9 +4,10 @@
 # Modelos do Django e do seu app
 from django.contrib.auth.models import User
 from datetime import date
+from django.utils import timezone
 from .models import Holerite, RegistroPonto
 from itertools import groupby
-from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer
+from .serializers import GestorDashboardSerializer, HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -270,3 +271,70 @@ class BancoHorasEquipeView(ListAPIView):
             })
             
         return lista_saldos
+
+class GestorDashboardView(APIView):
+    """
+    View que compila todos os dados necessários para o dashboard do gestor.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        equipe = User.objects.exclude(pk=request.user.pk).exclude(is_staff=True)
+        hoje = date.today()
+        
+        # --- Cálculo do Status da Equipe ---
+        team_status_list = []
+        usuarios_ativos_hoje = 0
+        
+        for funcionario in equipe:
+            # Pega os registros de hoje
+            punches_today = RegistroPonto.objects.filter(user=funcionario, timestamp__date=hoje)
+            last_punch = punches_today.last()
+            
+            # Calcula horas trabalhadas hoje
+            worked_seconds_today = 0
+            punches_list = list(punches_today)
+            for i in range(0, len(punches_list) - 1, 2):
+                start = punches_list[i]
+                end = punches_list[i+1]
+                if 'entrada' in start.tipo and 'saida' in end.tipo:
+                    worked_seconds_today += (end.timestamp - start.timestamp).total_seconds()
+            
+            worked_hours_today = worked_seconds_today / 3600
+            
+            # Define o status
+            status = "Ausente"
+            if last_punch:
+                usuarios_ativos_hoje += 1
+                if last_punch.tipo == 'entrada' or last_punch.tipo == 'entrada_almoco':
+                    status = "Trabalhando"
+                elif last_punch.tipo == 'saida_almoco':
+                    status = "Em pausa"
+                elif last_punch.tipo == 'saida':
+                    status = "Finalizado"
+
+            team_status_list.append({
+                'name': funcionario.get_full_name(),
+                'initials': "".join([n[0] for n in funcionario.get_full_name().split()]),
+                'status': status,
+                'lastPunch': timezone.localtime(last_punch.timestamp).strftime('%H:%M') if last_punch else '--:--',
+                'hoursToday': f"{int(worked_hours_today):02d}:{int((worked_hours_today*60)%60):02d}"
+            })
+
+        # --- Cálculo dos Cards de Estatísticas ---
+        stats_data = {
+            'pendentes': 0, # Exemplo, pois não temos a lógica de ajustes
+            'aniversariantes': 0, # Exemplo, pois não temos data de nascimento
+            'ativos': usuarios_ativos_hoje,
+            'ausentes': equipe.count() - usuarios_ativos_hoje
+        }
+
+        # --- Monta o objeto final ---
+        dashboard_data = {
+            'gestorName': request.user.first_name,
+            'stats': stats_data,
+            'teamStatus': team_status_list
+        }
+
+        serializer = GestorDashboardSerializer(instance=dashboard_data)
+        return Response(serializer.data)
