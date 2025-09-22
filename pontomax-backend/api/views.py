@@ -6,16 +6,13 @@ from django.contrib.auth.models import User
 from datetime import date
 from .models import Holerite, RegistroPonto
 from itertools import groupby
-from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer
+from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
-
-# Seus Serializers
-from .serializers import HoleriteSerializer, UserSerializer
 
 
 # --- Views da API ---
@@ -161,3 +158,46 @@ class RegistrosView(ListAPIView):
             })
 
         return daily_summaries
+    
+class BancoHorasSaldoView(APIView):
+    """
+    View que calcula e retorna o saldo total do banco de horas
+    para o usuário autenticado.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # 1. Busca todos os registros de ponto do usuário
+        punches = RegistroPonto.objects.filter(user=request.user).order_by('timestamp')
+
+        # 2. Calcula o saldo total
+        total_balance_hours = 0
+        # Agrupa os registros por dia
+        for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
+            punches_in_day = list(punches_in_day_iter)
+            total_seconds_in_day = 0
+            
+            # Itera sobre os registros do dia em pares (entrada/saída)
+            for i in range(0, len(punches_in_day) - 1, 2):
+                start_punch = punches_in_day[i]
+                end_punch = punches_in_day[i+1]
+                
+                if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
+                    time_diff = end_punch.timestamp - start_punch.timestamp
+                    total_seconds_in_day += time_diff.total_seconds()
+            
+            worked_hours = total_seconds_in_day / 3600
+            
+            # Lógica de cálculo de saldo (assumindo jornada de 8h)
+            # Acumula a diferença (positiva ou negativa)
+            if worked_hours > 0: # Só considera dias trabalhados
+                jornada_diaria = 8.0
+                daily_balance = worked_hours - jornada_diaria
+                total_balance_hours += daily_balance
+
+        # 3. Prepara os dados para a resposta
+        data = {'saldo_banco_horas': round(total_balance_hours, 2)}
+        serializer = BancoHorasSaldoSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        
+        return Response(serializer.validated_data)

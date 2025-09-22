@@ -129,3 +129,12 @@ class RegistroDiarioSerializer(serializers.Serializer):
 
     class Meta:
         fields = ['date', 'worked', 'overtime', 'debit', 'status']
+        
+class BancoHorasSaldoSerializer(serializers.Serializer):
+    """
+    Serializer para retornar o saldo calculado do banco de horas.
+    """
+    saldo_banco_horas = serializers.FloatField()
+
+    class Meta:
+        fields = ['saldo_banco_horas']
