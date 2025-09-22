@@ -343,28 +343,19 @@ class PontoMaxApp {
         console.log('Carregando dados do dashboard...');
     }
 
-    loadRegistrosData() {
+    async loadRegistrosData() {
         const recordsList = document.getElementById('records-table-body');
         const periodInput = document.getElementById('period-filter');
         const searchBtn = document.getElementById('search-btn');
 
         if (!recordsList || !periodInput || !searchBtn) return;
 
-        // Base de dados simulada completa
-        const mockRecords = [
-            { date: '2025-08-26', worked: 8, overtime: 0, debit: 0, status: 'Aberto' },
-            { date: '2025-08-25', worked: 9, overtime: 1, debit: 0, status: 'Fechado' },
-            { date: '2025-08-24', worked: 0, overtime: 0, debit: 0, status: 'Fechado' },
-            { date: '2025-08-23', worked: 5.5, overtime: 0, debit: 0.5, status: 'Fechado' },
-            { date: '2025-07-30', worked: 8, overtime: 0, debit: 0, status: 'Fechado' },
-            { date: '2025-07-29', worked: 7.5, overtime: 0, debit: 0.5, status: 'Fechado' },
-        ];
+        // Helper para formatar a data para o formato YYYY-MM-DD
+        const formatDateForAPI = (date) => date.toISOString().split('T')[0];
 
-        /**
-         * Função responsável por desenhar a tabela e o resumo com base nos dados fornecidos.
-         * @param {Array} recordsToRender - A lista de registros a ser exibida.
-         */
+        // Função que renderiza a tabela (permanece a mesma)
         const renderTableAndSummary = (recordsToRender) => {
+            // ... (toda a sua lógica de renderização existente, sem alterações)
             recordsList.innerHTML = '';
             let totalWorked = 0, totalOvertime = 0, totalDebit = 0;
 
@@ -372,7 +363,7 @@ class PontoMaxApp {
                 recordsList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem;">Nenhum registro encontrado para este período.</td></tr>';
             } else {
                 recordsToRender.forEach(record => {
-                    const date = new Date(record.date + 'T03:00:00'); // Timezone para evitar erro de dia
+                    const date = new Date(record.date + 'T03:00:00');
                     totalWorked += record.worked;
                     totalOvertime += record.overtime;
                     totalDebit += record.debit;
@@ -399,45 +390,45 @@ class PontoMaxApp {
             document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
         };
 
-        /**
-         * Função que filtra os registros com base no intervalo de datas do input.
-         */
-        const filterAndRender = () => {
+        // MUDANÇA PRINCIPAL: Função que busca os dados da API
+        const fetchAndRenderRecords = async () => {
             const dates = fp.selectedDates;
             if (dates.length < 2) {
-                // Se o usuário não selecionou um intervalo completo, mostra tudo
-                renderTableAndSummary(mockRecords);
+                this.showToast('Aviso', 'Por favor, selecione um intervalo de datas completo.', 'warning');
+                renderTableAndSummary([]); // Limpa a tabela
                 return;
             }
 
             const [startDate, endDate] = dates;
-            endDate.setHours(23, 59, 59, 999); // Garante que o dia final seja incluído por completo
+            const startDateStr = formatDateForAPI(startDate);
+            const endDateStr = formatDateForAPI(endDate);
 
-            const filteredRecords = mockRecords.filter(record => {
-                const recordDate = new Date(record.date + 'T03:00:00');
-                return recordDate >= startDate && recordDate <= endDate;
-            });
-
-            renderTableAndSummary(filteredRecords);
+            try {
+                const records = await window.authManager.apiCall(`/registros/?start_date=${startDateStr}&end_date=${endDateStr}`);
+                renderTableAndSummary(records);
+            } catch (error) {
+                console.error("Erro ao buscar registros:", error);
+                this.showToast('Erro', 'Não foi possível carregar os registros.', 'error');
+                renderTableAndSummary([]); // Limpa a tabela em caso de erro
+            }
         };
 
-        // Inicializa o Flatpickr no campo de input
+        // Inicializa o Flatpickr (calendário)
         const fp = flatpickr(periodInput, {
             mode: "range",
             dateFormat: "d/m/Y",
-            locale: "pt", // Usa o arquivo de tradução que adicionamos no HTML
-            onChange: function (selectedDates, dateStr, instance) {
-                // Opcional: filtrar automaticamente ao selecionar o intervalo
-                // Se preferir que filtre apenas no clique, comente a linha abaixo
-                filterAndRender();
-            }
+            locale: "pt",
+            // Define uma data padrão para a primeira carga
+            defaultDate: [new Date(new Date().setDate(1)), new Date()],
+            // Chama a busca assim que o calendário é fechado com uma nova data
+            onClose: fetchAndRenderRecords
         });
 
         // Adiciona o evento de clique ao botão de busca
-        searchBtn.addEventListener('click', filterAndRender);
+        searchBtn.addEventListener('click', fetchAndRenderRecords);
 
-        // Renderização inicial da tabela com todos os dados
-        renderTableAndSummary(mockRecords);
+        // Carga inicial dos dados
+        fetchAndRenderRecords();
     }
 
     loadBancoHorasData() {

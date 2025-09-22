@@ -37,38 +37,34 @@ class DashboardManager {
 
     async loadDashboardData() {
         try {
-            // Em produção, isso viria da API Django
             const user = window.authManager.getCurrentUser();
             this.userName = user ? user.nome.split(' ')[0] : 'Usuário';
 
-            await this.loadMockData(); // Carrega dados de exemplo
-            
-            this.updateAllUI();
+            // MUDANÇA: Agora fazemos duas chamadas à API em paralelo para mais eficiência
+            const [records, saldoData] = await Promise.all([
+                window.authManager.apiCall('/registros-ponto/'), // Busca os registros de hoje
+                window.authManager.apiCall('/banco-horas/saldo/')   // Busca o saldo total
+            ]);
 
-            // Atualiza as horas trabalhadas a cada minuto
-            setInterval(() => {
-                this.updateWorkingHours();
-                this.calculateEstimatedExit();
-                this.updateAllUI();
-            }, 60000);
+            // Processa os registros de hoje (lógica existente)
+            if (records.length > 0) {
+                this.punchRecords = [{
+                    id: 1,
+                    date: new Date().toISOString().split('T')[0],
+                    entries: records.map(r => ({ time: r.time, type: r.tipo }))
+                }];
+            } else {
+                this.punchRecords = [];
+            }
+
+            // MUDANÇA: Usa o saldo vindo da API
+            this.hoursBank = saldoData.saldo_banco_horas;
+
+            this.updateAllUI();
 
         } catch (error) {
             console.error('Erro ao carregar dados do dashboard:', error);
         }
-    }
-
-    async loadMockData() {
-        // Mock data - simula o que viria da API
-        this.punchRecords = [
-            {
-                id: 1,
-                date: new Date().toISOString().split('T')[0],
-                entries: [
-                    { time: '09:00', type: 'entrada' },
-                ]
-            }
-        ];
-        this.hoursBank = 50.25; // 50h 15m
     }
 
     calculateWorkedHours(entries) {
@@ -107,7 +103,7 @@ class DashboardManager {
             const estimatedExitDate = new Date();
             estimatedExitDate.setHours(hours + 9);
             estimatedExitDate.setMinutes(minutes);
-            
+
             this.estimatedExitTime = estimatedExitDate.toLocaleTimeString('pt-BR', {
                 hour: '2-digit',
                 minute: '2-digit'
@@ -129,7 +125,7 @@ class DashboardManager {
     updateAllUI() {
         this.updateWorkingHours();
         this.calculateEstimatedExit();
-        
+
         // Cabeçalho
         document.getElementById('dashboard-user-name').textContent = this.userName;
         document.getElementById('dashboard-current-date').textContent = this.formatDateHeader(new Date());
@@ -137,7 +133,7 @@ class DashboardManager {
         // Cards
         document.getElementById('today-worked-hours').textContent = this.formatHoursSimple(this.workingHours.today);
         document.getElementById('estimated-exit-time').textContent = this.estimatedExitTime || '--:--';
-        
+
         const bankHoursElement = document.getElementById('hours-bank-balance');
         bankHoursElement.textContent = `${this.hoursBank >= 0 ? '+' : '-'}${this.formatHours(Math.abs(this.hoursBank))}`;
         bankHoursElement.className = `stat-value ${this.hoursBank >= 0 ? 'positive' : 'negative'}`;
@@ -189,7 +185,7 @@ class DashboardManager {
 
         const todayRecord = this.getTodayRecord();
         let nextAction = 'entrada';
-        
+
         if (todayRecord && todayRecord.entries.length > 0) {
             const lastEntryType = todayRecord.entries[todayRecord.entries.length - 1].type;
             const actionMap = {
@@ -215,38 +211,17 @@ class DashboardManager {
     }
 
     async registerPunch() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const todayDate = now.toISOString().split('T')[0];
-
-        let todayRecord = this.getTodayRecord();
-        if (!todayRecord) {
-            todayRecord = { id: Date.now(), date: todayDate, entries: [] };
-            this.punchRecords.push(todayRecord);
-        }
-
-        // Determina o tipo do próximo registro
-        let punchType = 'entrada';
-        if (todayRecord.entries.length > 0) {
-            const lastEntryType = todayRecord.entries[todayRecord.entries.length - 1].type;
-            const typeMap = {
-                'entrada': 'saida_almoco',
-                'saida_almoco': 'entrada_almoco',
-                'entrada_almoco': 'saida'
-            };
-            punchType = typeMap[lastEntryType] || 'entrada';
-        }
-
-        todayRecord.entries.push({ time: timeString, type: punchType });
-
         try {
-            // Em produção, aqui seria a chamada para a API
-            // await this.savePunchRecord(todayRecord);
+            // MUDANÇA: Envia uma requisição POST vazia para a API
+            // O backend cuidará de definir o usuário, hora e tipo
+            await window.authManager.apiCall('/registros-ponto/', {
+                method: 'POST'
+            });
 
-            this.updateAllUI();
+            // Após registrar, recarrega os dados do dashboard para atualizar a tela
+            await this.loadDashboardData();
 
-            const typeLabels = { 'entrada': 'Entrada', 'saida_almoco': 'Saída para Almoço', 'entrada_almoco': 'Volta do Almoço', 'saida': 'Saída' };
-            window.pontoMaxApp.showToast('Ponto Registrado', `${typeLabels[punchType]} registrada às ${timeString}`, 'success');
+            window.pontoMaxApp.showToast('Sucesso', 'Ponto registrado com sucesso!', 'success');
         } catch (error) {
             console.error('Erro ao registrar ponto:', error);
             window.pontoMaxApp.showToast('Erro', 'Não foi possível registrar o ponto.', 'error');
@@ -265,7 +240,7 @@ class DashboardManager {
         const m = totalMinutes % 60;
         return `${h}h ${m.toString().padStart(2, '0')}m`;
     }
-    
+
     formatHoursSimple(hoursDecimal) {
         const totalMinutes = Math.floor(hoursDecimal * 60);
         const h = Math.floor(totalMinutes / 60);
