@@ -116,3 +116,16 @@ class RegistroPontoSerializer(serializers.ModelSerializer):
         model = RegistroPonto
         fields = ['id', 'time', 'tipo']
         read_only_fields = ['tipo']
+
+class RegistroDiarioSerializer(serializers.Serializer):
+    """
+    Serializer para o resumo de um dia de trabalho, com dados calculados.
+    """
+    date = serializers.DateField()
+    worked = serializers.FloatField()
+    overtime = serializers.FloatField()
+    debit = serializers.FloatField()
+    status = serializers.CharField()
+
+    class Meta:
+        fields = ['date', 'worked', 'overtime', 'debit', 'status']

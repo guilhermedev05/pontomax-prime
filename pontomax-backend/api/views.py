@@ -5,12 +5,14 @@
 from django.contrib.auth.models import User
 from datetime import date
 from .models import Holerite, RegistroPonto
-from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer
+from itertools import groupby
+from .serializers import HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 
 # Seus Serializers
 from .serializers import HoleriteSerializer, UserSerializer
@@ -101,3 +103,61 @@ class RegistroPontoViewSet(viewsets.ModelViewSet):
         
         # Salva o novo registro com o usuário logado e o tipo calculado
         serializer.save(user=self.request.user, tipo=next_type)
+
+class RegistrosView(ListAPIView):
+    """
+    View para listar os resumos diários de ponto para um intervalo de datas.
+    """
+    serializer_class = RegistroDiarioSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 1. Pega as datas da URL (ex: /api/registros/?start_date=...&end_date=...)
+        start_date_str = self.request.query_params.get('start_date')
+        end_date_str = self.request.query_params.get('end_date')
+
+        if not start_date_str or not end_date_str:
+            return [] # Retorna vazio se as datas não forem fornecidas
+
+        start_date = date.fromisoformat(start_date_str)
+        end_date = date.fromisoformat(end_date_str)
+
+        # 2. Busca todos os registros de ponto do usuário no intervalo
+        punches = RegistroPonto.objects.filter(
+            user=self.request.user,
+            timestamp__date__range=[start_date, end_date]
+        ).order_by('timestamp')
+
+        # 3. Processa os registros para calcular os totais diários
+        daily_summaries = []
+        # Agrupa os registros por dia
+        for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
+            punches_in_day = list(punches_in_day_iter)
+            total_seconds = 0
+            
+            # Itera sobre os registros do dia em pares (entrada/saída)
+            for i in range(0, len(punches_in_day) - 1, 2):
+                start_punch = punches_in_day[i]
+                end_punch = punches_in_day[i+1]
+                
+                # Validação simples de pares (ex: entrada -> saida_almoco)
+                if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
+                    time_diff = end_punch.timestamp - start_punch.timestamp
+                    total_seconds += time_diff.total_seconds()
+            
+            worked_hours = total_seconds / 3600
+            
+            # Lógica de cálculo de hora extra/débito (assumindo jornada de 8h)
+            jornada_diaria = 8.0
+            overtime = max(0, worked_hours - jornada_diaria)
+            debit = max(0, jornada_diaria - worked_hours) if worked_hours < jornada_diaria else 0
+
+            daily_summaries.append({
+                'date': day,
+                'worked': round(worked_hours, 2),
+                'overtime': round(overtime, 2),
+                'debit': round(debit, 2),
+                'status': 'Fechado' # Status de exemplo
+            })
+
+        return daily_summaries
