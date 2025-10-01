@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -145,3 +146,39 @@ CORS_ALLOW_HEADERS = [
     'Authorization',
     'Content-Type',
 ]
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+JAZZMIN_SETTINGS = {
+    # Título da janela do navegador (normalmente <title>)
+    "site_title": "PontoMax Admin",
+
+    # Título no cabeçalho (mostrado na parte superior da página)
+    "site_header": "PontoMax",
+
+    # Logo para usar no cabeçalho, em vez do texto "site_header"
+    # Recomendo usar o mesmo logo do seu frontend.
+    # Coloque o arquivo de logo em uma pasta 'static/img/' dentro de um dos seus apps.
+    "site_logo": "api/img/logo.svg",
+
+    # Texto de boas-vindas na tela de login
+    "welcome_sign": "Bem-vindo ao PontoMax Admin",
+
+    # Copyright no rodapé
+    "copyright": "PontoMax Tecnologia LTDA",
+
+    # Ícones para os modelos
+    # (Opcional, mas deixa a interface bem mais bonita)
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "api.Profile": "fas fa-id-card",
+        "api.RegistroPonto": "fas fa-clock",
+        "api.Holerite": "fas fa-file-invoice-dollar",
+        "api.Fechamento": "fas fa-calendar-check",
+        "api.Vencimento": "fas fa-arrow-circle-up", # Ícone para ganhos
+        "api.Desconto": "fas fa-arrow-circle-down", 
+    },
+}

@@ -5,7 +5,7 @@
 from django.contrib.auth.models import User
 from datetime import date
 from django.utils import timezone
-from .models import Holerite, RegistroPonto
+from .models import Holerite, RegistroPonto, Fechamento
 from itertools import groupby
 from .serializers import GestorDashboardSerializer, HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer
 # Ferramentas do Django Rest Framework
@@ -14,6 +14,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
+from .serializers import FechamentoSerializer
+from rest_framework.decorators import action
 
 def calcular_saldo_banco_horas(user):
     """
@@ -338,3 +340,63 @@ class GestorDashboardView(APIView):
 
         serializer = GestorDashboardSerializer(instance=dashboard_data)
         return Response(serializer.data)
+
+class FechamentoViewSet(viewsets.ModelViewSet):
+    queryset = Fechamento.objects.all().order_by('-periodo')
+    serializer_class = FechamentoSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['post'], url_path='iniciar')
+    def iniciar_fechamento(self, request):
+        periodo = request.data.get('periodo')
+        if not periodo:
+            return Response({'error': 'Período é obrigatório'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        fechamento, _ = Fechamento.objects.get_or_create(periodo=periodo)
+        fechamento.status = 'REVISAO'
+        fechamento.iniciado_por = request.user
+        fechamento.save()
+
+        equipe = User.objects.exclude(pk=request.user.pk).exclude(is_staff=True)
+        ano, mes = map(int, periodo.split('-'))
+        
+        dados_revisao = []
+        for funcionario in equipe:
+            saldo_mensal = calcular_saldo_mensal(funcionario, ano, mes)
+            dados_revisao.append({
+                'name': funcionario.get_full_name(),
+                'balance': saldo_mensal['credits'] - saldo_mensal['debits']
+            })
+
+        return Response({
+            'fechamento': self.get_serializer(fechamento).data,
+            'dados_revisao': dados_revisao
+        })
+
+    @action(detail=True, methods=['post'], url_path='gerar-holerites')
+    def gerar_holerites(self, request, pk=None):
+        fechamento = self.get_object()
+        fechamento.status = 'GERANDO'
+        fechamento.save()
+        
+        equipe = User.objects.exclude(is_staff=True)
+        for funcionario in equipe:
+            if hasattr(funcionario, 'profile') and funcionario.profile.salario_base:
+                salario_bruto = funcionario.profile.salario_base
+                descontos = salario_bruto * 0.1 # Exemplo: 10%
+                salario_liquido = salario_bruto - descontos
+
+                HoleriteGerado.objects.update_or_create(
+                    fechamento=fechamento, user=funcionario,
+                    defaults={ 'salario_bruto': salario_bruto, 'total_descontos': descontos, 'salario_liquido': salario_liquido }
+                )
+        
+        fechamento.status = 'CONCLUIDO'
+        fechamento.save()
+        return Response(self.get_serializer(fechamento).data)
+
+    @action(detail=True, methods=['post'], url_path='enviar-holerites')
+    def enviar_holerites(self, request, pk=None):
+        fechamento = self.get_object()
+        fechamento.holerites_gerados.update(enviado=True)
+        return Response({'status': 'Holerites marcados como enviados.'})

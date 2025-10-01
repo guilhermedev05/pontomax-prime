@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto
+from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto, Fechamento, HoleriteGerado
 
 # --- Serializers para o Holerite ---
 # (As classes VencimentoSerializer, DescontoSerializer e HoleriteSerializer continuam as mesmas)
@@ -172,3 +172,18 @@ class GestorDashboardSerializer(serializers.Serializer):
     gestorName = serializers.CharField()
     stats = DashboardStatsSerializer()
     teamStatus = TeamStatusSerializer(many=True)
+
+class HoleriteGeradoSerializer(serializers.ModelSerializer):
+    userName = serializers.CharField(source='user.get_full_name', read_only=True)
+    
+    class Meta:
+        model = HoleriteGerado
+        fields = ['id', 'userName', 'salario_bruto', 'total_descontos', 'salario_liquido', 'enviado']
+
+
+class FechamentoSerializer(serializers.ModelSerializer):
+    holerites_gerados = HoleriteGeradoSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Fechamento
+        fields = ['id', 'periodo', 'status', 'holerites_gerados']

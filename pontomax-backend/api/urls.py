@@ -6,11 +6,13 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from .views import FechamentoViewSet
 
 # Cria um router e registra nosso ViewSet com ele.
 router = DefaultRouter()
 router.register(r'equipe', UserViewSet, basename='equipe')
 router.register(r'registros-ponto', RegistroPontoViewSet, basename='registro-ponto')
+router.register(r'fechamentos', FechamentoViewSet, basename='fechamento')
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
