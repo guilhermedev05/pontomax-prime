@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import FechamentoViewSet
+from django.views.generic import TemplateView
 
 # Cria um router e registra nosso ViewSet com ele.
 router = DefaultRouter()

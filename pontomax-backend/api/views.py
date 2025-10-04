@@ -5,7 +5,7 @@
 from django.contrib.auth.models import User
 from datetime import date
 from django.utils import timezone
-from .models import Holerite, RegistroPonto, Fechamento
+from .models import Holerite, RegistroPonto, Fechamento, HoleriteGerado
 from itertools import groupby
 from .serializers import GestorDashboardSerializer, HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer
 # Ferramentas do Django Rest Framework
@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from .serializers import FechamentoSerializer
 from rest_framework.decorators import action
+from decimal import Decimal
 
 def calcular_saldo_banco_horas(user):
     """
@@ -383,7 +384,7 @@ class FechamentoViewSet(viewsets.ModelViewSet):
         for funcionario in equipe:
             if hasattr(funcionario, 'profile') and funcionario.profile.salario_base:
                 salario_bruto = funcionario.profile.salario_base
-                descontos = salario_bruto * 0.1 # Exemplo: 10%
+                descontos = salario_bruto * Decimal('0.10') # Exemplo: 10%
                 salario_liquido = salario_bruto - descontos
 
                 HoleriteGerado.objects.update_or_create(
