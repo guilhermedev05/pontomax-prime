@@ -6,10 +6,9 @@ Este guia descreve os passos necessários para clonar, configurar e rodar a apli
 
 Antes de começar, garanta que você tenha os seguintes softwares instalados na nova máquina:
 
-  - **Git**: Para clonar o repositório.
-  - **Python** (versão 3.10 ou superior): Para rodar o backend Django.
-  - **Um editor de código**: Recomenda-se o **Visual Studio Code**.
-  - **(Apenas para VS Code)** A extensão **Live Server**: Para rodar o frontend estático.
+  * **Git**: Para clonar o repositório.
+  * **Python** (versão 3.10 ou superior): Para rodar o backend Django.
+  * **Um editor de código**: Recomenda-se o **Visual Studio Code**.
 
 -----
 
@@ -27,7 +26,7 @@ cd pontomax-prime
 
 -----
 
-## Passo 2: Configurando o Backend (Django)
+## Passo 2: Configurando o Ambiente
 
 Todos os comandos a seguir devem ser executados de dentro da pasta `pontomax-backend`.
 
@@ -58,14 +57,14 @@ Todos os comandos a seguir devem ser executados de dentro da pasta `pontomax-bac
     Você verá `(venv)` no início da linha do seu terminal.
 
 4.  **Instale as Dependências:**
-    Este comando lê o arquivo `requirements.txt` que criamos e instala todas as bibliotecas necessárias (Django, DRF, etc.) de uma só vez.
+    Este comando lê o arquivo `requirements.txt` e instala todas as bibliotecas necessárias (Django, DRF, etc.).
 
     ```bash
     pip install -r requirements.txt
     ```
 
 5.  **Crie o Banco de Dados:**
-    O comando `migrate` lê os seus modelos e cria o arquivo de banco de dados `db.sqlite3` do zero.
+    O comando `migrate` lê os modelos do projeto e cria o arquivo de banco de dados `db.sqlite3` do zero.
 
     ```bash
     python manage.py migrate
@@ -80,41 +79,38 @@ Todos os comandos a seguir devem ser executados de dentro da pasta `pontomax-bac
 
     Siga as instruções para criar seu usuário e senha de administrador.
 
-7.  **Inicie o Servidor Backend:**
+-----
+
+## Passo 3: Executando a Aplicação
+
+Com a nova configuração, o servidor do Django é responsável por rodar tanto o backend quanto o frontend.
+
+1.  **Inicie o Servidor Django:**
+    Ainda dentro da pasta `pontomax-backend` e com o ambiente virtual ativado, rode o comando:
 
     ```bash
     python manage.py runserver
     ```
 
-    Se tudo deu certo, você verá a mensagem `Starting development server at http://127.0.0.1:8000/`. **Deixe este terminal aberto.**
+2.  **Acesse a Aplicação:**
+    Se tudo deu certo, você verá a mensagem `Starting development server at http://127.0.0.1:8000/`.
+    Agora, basta abrir seu navegador e acessar esse endereço:
 
------
+      * **Aplicação Principal (Frontend):** `http://127.0.0.1:8000/`
+      * **Painel Administrativo (Backend):** `http://127.0.0.1:8000/admin/`
 
-## Passo 3: Rodando o Frontend
-
-O frontend é mais simples, pois não precisa de compilação.
-
-1.  Abra a pasta **raiz do projeto** (`pontomax-prime`) no Visual Studio Code.
-
-2.  Na barra de arquivos à esquerda, encontre o arquivo `index.html`.
-
-3.  Clique com o botão direito do mouse sobre `index.html` e selecione **"Open with Live Server"**.
-
-4.  Isso abrirá o seu navegador em um endereço como `http://127.0.0.1:5500`. Usar o Live Server é importante para evitar problemas de CORS que aconteceriam se você abrisse o arquivo diretamente.
+    **Deixe o terminal rodando** para manter o servidor ativo.
 
 -----
 
 ## Passo 4: Testando a Aplicação
 
-Se tudo correu bem, você deve ter:
-
-  - O backend rodando no terminal no endereço `http://127.0.0.1:8000`.
-  - O frontend aberto no navegador no endereço `http://127.0.0.1:5500`.
+Se tudo correu bem, o servidor Django está ativo e servindo sua aplicação completa no endereço `http://127.0.0.1:8000`.
 
 **Para finalizar:**
 
 1.  Acesse o painel de administração (`http://127.0.0.1:8000/admin/`) e faça login com o superusuário que você criou.
 2.  Cadastre alguns usuários de teste (ex: um `COLABORADOR` e um `GESTOR`), preenchendo os dados de perfil (salário, etc.).
-3.  Acesse o frontend (`http://127.0.0.1:5500`), tente fazer login com um dos usuários de teste e verifique se tudo está funcionando.
+3.  Acesse a aplicação principal (`http://127.0.0.1:8000/`), tente fazer login com um dos usuários de teste e verifique se tudo está funcionando.
 
 Pronto\! Seguindo este guia, qualquer pessoa consegue configurar e rodar seu projeto PontoMax em uma nova máquina.

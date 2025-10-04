@@ -107,3 +107,22 @@ class HoleriteGerado(models.Model):
 
     def __str__(self):
         return f"Holerite de {self.user.username} para {self.fechamento.periodo}"
+
+# ADICIONE ESTES NOVOS MODELOS NO FINAL DO ARQUIVO
+class VencimentoGerado(models.Model):
+    holerite_gerado = models.ForeignKey(HoleriteGerado, on_delete=models.CASCADE, related_name='vencimentos_gerados')
+    descricao = models.CharField(max_length=100)
+    detalhes = models.CharField(max_length=50, null=True, blank=True)
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Vencimento: {self.descricao} - R$ {self.valor}"
+
+class DescontoGerado(models.Model):
+    holerite_gerado = models.ForeignKey(HoleriteGerado, on_delete=models.CASCADE, related_name='descontos_gerados')
+    descricao = models.CharField(max_length=100)
+    detalhes = models.CharField(max_length=50, null=True, blank=True)
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Desconto: {self.descricao} - R$ {self.valor}"

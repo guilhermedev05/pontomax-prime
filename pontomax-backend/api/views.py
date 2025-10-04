@@ -5,7 +5,11 @@
 from django.contrib.auth.models import User
 from datetime import date
 from django.utils import timezone
-from .models import Holerite, RegistroPonto, Fechamento, HoleriteGerado
+from .models import (
+    Holerite, RegistroPonto, Fechamento, HoleriteGerado,
+    Vencimento, Desconto, VencimentoGerado, DescontoGerado
+)
+from django.db import transaction
 from itertools import groupby
 from .serializers import GestorDashboardSerializer, HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer
 # Ferramentas do Django Rest Framework
@@ -379,25 +383,90 @@ class FechamentoViewSet(viewsets.ModelViewSet):
         fechamento = self.get_object()
         fechamento.status = 'GERANDO'
         fechamento.save()
-        
+
         equipe = User.objects.exclude(is_staff=True)
         for funcionario in equipe:
             if hasattr(funcionario, 'profile') and funcionario.profile.salario_base:
-                salario_bruto = funcionario.profile.salario_base
-                descontos = salario_bruto * Decimal('0.10') # Exemplo: 10%
-                salario_liquido = salario_bruto - descontos
-
-                HoleriteGerado.objects.update_or_create(
+                
+                # Cria ou busca o holerite gerado principal
+                holerite_gerado, _ = HoleriteGerado.objects.update_or_create(
                     fechamento=fechamento, user=funcionario,
-                    defaults={ 'salario_bruto': salario_bruto, 'total_descontos': descontos, 'salario_liquido': salario_liquido }
+                    defaults={'salario_bruto': 0, 'total_descontos': 0, 'salario_liquido': 0}
                 )
+
+                # Limpa itens antigos para não duplicar
+                holerite_gerado.vencimentos_gerados.all().delete()
+                holerite_gerado.descontos_gerados.all().delete()
+
+                # --- Lógica para criar os itens de Vencimento ---
+                salario_base = funcionario.profile.salario_base
+                VencimentoGerado.objects.create(
+                    holerite_gerado=holerite_gerado,
+                    descricao="Salário Base",
+                    valor=salario_base
+                )
+                # (Aqui você poderia adicionar lógica para horas extras, etc.)
+
+                # --- Lógica para criar os itens de Desconto (exemplo) ---
+                inss = salario_base * Decimal('0.08') # Exemplo: 8%
+                DescontoGerado.objects.create(
+                    holerite_gerado=holerite_gerado,
+                    descricao="INSS",
+                    detalhes="Alíquota 8%",
+                    valor=inss
+                )
+                # (Aqui você poderia adicionar lógica para IRRF, vale transporte, etc.)
+
+                # --- Calcula e salva os totais ---
+                total_vencimentos = sum(v.valor for v in holerite_gerado.vencimentos_gerados.all())
+                total_descontos = sum(d.valor for d in holerite_gerado.descontos_gerados.all())
+                
+                holerite_gerado.salario_bruto = total_vencimentos
+                holerite_gerado.total_descontos = total_descontos
+                holerite_gerado.salario_liquido = total_vencimentos - total_descontos
+                holerite_gerado.save()
         
         fechamento.status = 'CONCLUIDO'
         fechamento.save()
         return Response(self.get_serializer(fechamento).data)
-
+    
     @action(detail=True, methods=['post'], url_path='enviar-holerites')
     def enviar_holerites(self, request, pk=None):
         fechamento = self.get_object()
-        fechamento.holerites_gerados.update(enviado=True)
-        return Response({'status': 'Holerites marcados como enviados.'})
+
+        # Usamos uma transação para garantir que tudo seja salvo com sucesso, ou nada é salvo.
+        with transaction.atomic():
+            for holerite_gerado in fechamento.holerites_gerados.all():
+                # 1. Cria ou atualiza o Holerite principal que o colaborador vê
+                holerite_publicado, _ = Holerite.objects.update_or_create(
+                    user=holerite_gerado.user,
+                    periodo=fechamento.periodo,
+                )
+
+                # 2. Limpa os vencimentos e descontos antigos para não duplicar
+                holerite_publicado.vencimentos.all().delete()
+                holerite_publicado.descontos.all().delete()
+
+                # 3. Copia os Vencimentos Gerados para os Vencimentos publicados
+                for venc in holerite_gerado.vencimentos_gerados.all():
+                    Vencimento.objects.create(
+                        holerite=holerite_publicado,
+                        descricao=venc.descricao,
+                        detalhes=venc.detalhes,
+                        valor=venc.valor
+                    )
+
+                # 4. Copia os Descontos Gerados para os Descontos publicados
+                for desc in holerite_gerado.descontos_gerados.all():
+                    Desconto.objects.create(
+                        holerite=holerite_publicado,
+                        descricao=desc.descricao,
+                        detalhes=desc.detalhes,
+                        valor=desc.valor
+                    )
+
+                # 5. Marca o holerite gerado como enviado
+                holerite_gerado.enviado = True
+                holerite_gerado.save()
+
+        return Response({'status': 'Holerites publicados com sucesso para os colaboradores.'})
