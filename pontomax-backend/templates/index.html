@@ -263,20 +263,16 @@
             <div id="holerite-page" class="content-page">
                 <div class="page-header">
                     <h1>Meu holerite</h1>
-                    <p>Consulte e baixe Seus holerites mensais</p>
+                    <p>Consulte e baixe seus holerites mensais</p>
                 </div>
 
                 <div class="filters-card">
                     <div class="form-group">
                         <label for="payslip-period">Selecione o período a consultar</label>
-                        <select id="payslip-period" class="form-select">
-                            <option value="2025-08">Agosto/2025</option>
-                            <option value="2025-07">Julho/2025</option>
-                            <option value="2025-06">Junho/2025</option>
-                        </select>
+                        <select id="payslip-period" class="form-select"></select>
                     </div>
                     <div class="filter-actions">
-                        <button class="btn-outline">
+                        <button class="btn-outline" id="btn-view-payslip">
                             <i data-lucide="eye"></i>
                             <span>Visualizar</span>
                         </button>
@@ -287,43 +283,49 @@
                     </div>
                 </div>
 
-                <div class="payslip-card">
-                    <div class="payslip-header">
-                        <h2 id="payslip-title">Holerite - Agosto/2025</h2>
-                        <p id="payslip-user-info">Carregando...</p>
-                    </div>
+                <div id="payslip-content-wrapper" class="hidden">
+                    <div class="payslip-card">
+                        <div class="payslip-header">
+                            <h2 id="payslip-title"></h2>
+                            <p id="payslip-user-info"></p>
+                        </div>
 
-                    <div class="payslip-section">
-                        <div class="section-header earnings">
-                            <i data-lucide="dollar-sign"></i>
-                            <h3>Remunerações</h3>
+                        <div class="payslip-section">
+                            <div class="section-header earnings">
+                                <i data-lucide="dollar-sign"></i>
+                                <h3>Remunerações</h3>
+                            </div>
+                            <div class="section-content" id="payslip-earnings-content"></div>
+                            <div class="section-total">
+                                <span>Total Bruto</span>
+                                <span id="payslip-gross-total"></span>
+                            </div>
                         </div>
-                        <div class="section-content" id="payslip-earnings-content">
-                        </div>
-                        <div class="section-total">
-                            <span>Total Bruto</span>
-                            <span id="payslip-gross-total">R$ 0,00</span>
-                        </div>
-                    </div>
 
-                    <div class="payslip-section">
-                        <div class="section-header deductions">
-                            <i data-lucide="dollar-sign"></i>
-                            <h3>Descontos</h3>
+                        <div class="payslip-section">
+                            <div class="section-header deductions">
+                                <i data-lucide="dollar-sign"></i>
+                                <h3>Descontos</h3>
+                            </div>
+                            <div class="section-content" id="payslip-deductions-content"></div>
+                            <div class="section-total">
+                                <span>Total Descontos</span>
+                                <span id="payslip-deductions-total"></span>
+                            </div>
                         </div>
-                        <div class="section-content" id="payslip-deductions-content">
-                        </div>
-                        <div class="section-total">
-                            <span>Total Descontos</span>
-                            <span id="payslip-deductions-total">R$ 0,00</span>
-                        </div>
-                    </div>
 
-                    <div class="net-value-summary">
-                        <p>VALOR LÍQUIDO A RECEBER</p>
-                        <h2 id="payslip-net-total">R$ 0,00</h2>
-                        <span>Crédito em conta corrente</span>
+                        <div class="net-value-summary">
+                            <p>VALOR LÍQUIDO A RECEBER</p>
+                            <h2 id="payslip-net-total"></h2>
+                            <span>Crédito em conta corrente</span>
+                        </div>
                     </div>
+                </div>
+
+                <div id="payslip-empty-state" class="empty-state-card hidden">
+                    <i data-lucide="file-search-2"></i>
+                    <h2>Nenhum Holerite Encontrado</h2>
+                    <p>Não encontramos registros de holerite para o período selecionado. Tente outro mês ou entre em contato com o RH.</p>
                 </div>
             </div>
 

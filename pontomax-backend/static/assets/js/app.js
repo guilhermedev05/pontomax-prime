@@ -296,7 +296,7 @@ class PontoMaxApp {
                 this.loadRegistrosData();
                 break;
             case 'holerite':
-                // this.loadHoleriteData();
+                this.setupHoleritePage();
                 break;
             case 'equipe':
                 this.loadEquipeData();
@@ -512,20 +512,24 @@ class PontoMaxApp {
     // Substitua completamente a sua função loadHoleriteData por esta versão
     async loadHoleriteData() {
         const payslipPeriodSelector = document.getElementById('payslip-period');
-        if (!payslipPeriodSelector) return;
+        const contentWrapper = document.getElementById('payslip-content-wrapper');
+        const emptyState = document.getElementById('payslip-empty-state');
+
+        if (!payslipPeriodSelector || !contentWrapper || !emptyState) return;
+
+        // Esconde ambos os containers antes de fazer a chamada
+        contentWrapper.classList.add('hidden');
+        emptyState.classList.add('hidden');
 
         const selectedPeriod = payslipPeriodSelector.value;
 
         try {
-            // A ÚNICA chamada necessária, usando nosso helper que já envia o token
+            // Mostra um estado de "carregando" (opcional, mas bom para UX)
+            // (Aqui você poderia adicionar um spinner)
+
             const payslipData = await window.authManager.apiCall(`/holerites/?periodo=${selectedPeriod}`);
 
-            // Se a chamada acima for bem-sucedida, o código continua e popula a tela.
-            // A sua lógica para preencher o HTML a partir daqui já está perfeita.
-
-            const earnings = payslipData.vencimentos;
-            const deductions = payslipData.descontos;
-
+            // Preenche os dados como antes...
             document.getElementById('payslip-title').textContent = `Holerite - ${payslipData.periodLabel}`;
             document.getElementById('payslip-user-info').textContent = payslipData.userInfo;
 
@@ -534,26 +538,27 @@ class PontoMaxApp {
             earningsContent.innerHTML = '';
             deductionsContent.innerHTML = '';
 
+            // ... (resto da lógica de preenchimento que você já tinha)
             let grossTotal = 0;
             let deductionsTotal = 0;
 
             const createLineItem = (item, isDeduction = false) => `
-            <div class="line-item">
-                <div class="item-description">
-                    <span>${item.descricao}</span>
-                    ${item.detalhes ? `<small>${item.detalhes}</small>` : ''}
-                </div>
-                <div class="item-value ${isDeduction ? 'negative' : 'positive'}">
-                    ${this.formatCurrency(parseFloat(item.valor)).replace('R$', '')}
-                </div>
-            </div>`;
+        <div class="line-item">
+            <div class="item-description">
+                <span>${item.descricao}</span>
+                ${item.detalhes ? `<small>${item.detalhes}</small>` : ''}
+            </div>
+            <div class="item-value ${isDeduction ? 'negative' : 'positive'}">
+                ${this.formatCurrency(parseFloat(item.valor)).replace('R$', '')}
+            </div>
+        </div>`;
 
-            earnings.forEach(item => {
+            payslipData.vencimentos.forEach(item => {
                 grossTotal += parseFloat(item.valor);
                 earningsContent.innerHTML += createLineItem(item);
             });
 
-            deductions.forEach(item => {
+            payslipData.descontos.forEach(item => {
                 deductionsTotal += parseFloat(item.valor);
                 deductionsContent.innerHTML += createLineItem(item, true);
             });
@@ -564,16 +569,13 @@ class PontoMaxApp {
             document.getElementById('payslip-deductions-total').textContent = this.formatCurrency(deductionsTotal);
             document.getElementById('payslip-net-total').textContent = this.formatCurrency(netTotal);
 
+            // Finalmente, MOSTRA o card do holerite
+            contentWrapper.classList.remove('hidden');
+
         } catch (error) {
             console.error('Erro ao buscar dados do holerite:', error);
-            // Limpa a tela se a API retornar um erro (como 404 - não encontrado)
-            document.getElementById('payslip-title').textContent = 'Holerite - Nenhum dado encontrado';
-            document.getElementById('payslip-user-info').textContent = '';
-            document.getElementById('payslip-earnings-content').innerHTML = '<p class="no-records">Sem dados para este período.</p>';
-            document.getElementById('payslip-deductions-content').innerHTML = '';
-            document.getElementById('payslip-gross-total').textContent = this.formatCurrency(0);
-            document.getElementById('payslip-deductions-total').textContent = this.formatCurrency(0);
-            document.getElementById('payslip-net-total').textContent = this.formatCurrency(0);
+            // Em caso de erro (incluindo 404), MOSTRA a mensagem de estado vazio
+            emptyState.classList.remove('hidden');
         }
     }
 
@@ -1166,6 +1168,46 @@ class PontoMaxApp {
         }
     }
 
+    setupHoleritePage() {
+        const periodSelector = document.getElementById('payslip-period');
+        const viewButton = document.getElementById('btn-view-payslip');
+
+        if (!periodSelector || !viewButton) return;
+
+        // Limpa opções antigas
+        periodSelector.innerHTML = '';
+
+        // Lógica para popular os últimos 12 meses, com o mês anterior como padrão
+        const today = new Date();
+        today.setDate(1); // Garante que estamos no início do mês para evitar problemas
+
+        for (let i = 1; i < 13; i++) {
+            const date = new Date(today);
+            date.setMonth(today.getMonth() - i);
+
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const value = `${year}-${month}`;
+
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
+
+            // Define o mês anterior como o selecionado por padrão
+            if (i === 1) {
+                option.selected = true;
+            }
+
+            periodSelector.appendChild(option);
+        }
+
+        // Anexa o evento de clique ao botão, que chamará a função para carregar os dados
+        viewButton.onclick = () => this.loadHoleriteData();
+
+        // Garante que o estado inicial da página está limpo
+        document.getElementById('payslip-content-wrapper').classList.add('hidden');
+        document.getElementById('payslip-empty-state').classList.add('hidden');
+    }
 }
 
 // Inicializar aplicação
