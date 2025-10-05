@@ -121,7 +121,7 @@ class AuthManager {
         if (userInitials) userInitials.textContent = this.getUserInitials();
         if (userName) userName.textContent = this.currentUser.nome;
         if (userEmail) userEmail.textContent = this.currentUser.email;
-        if (userRole) userRole.textContent = this.currentUser.perfil;
+        if (userRole) userRole.textContent = this.currentUser.profile.perfil;
 
         // Atualizar navegação baseada no perfil
         this.updateNavigation();
