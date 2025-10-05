@@ -24,7 +24,8 @@ from decimal import Decimal
 
 def calcular_saldo_banco_horas(user):
     """
-    Função reutilizável que calcula o saldo total de horas para um usuário.
+    Calcula o saldo total de horas. A jornada diária é a diferença
+    entre o primeiro e o último registro do dia.
     """
     punches = RegistroPonto.objects.filter(user=user).order_by('timestamp')
     total_balance_hours = 0
@@ -32,27 +33,26 @@ def calcular_saldo_banco_horas(user):
 
     for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
         punches_in_day = list(punches_in_day_iter)
-        total_seconds_in_day = 0
         
-        for i in range(0, len(punches_in_day) - 1, 2):
-            start_punch = punches_in_day[i]
-            end_punch = punches_in_day[i+1]
-            if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
-                time_diff = end_punch.timestamp - start_punch.timestamp
-                total_seconds_in_day += time_diff.total_seconds()
-        
-        worked_hours = total_seconds_in_day / 3600
-        if worked_hours > 0:
-            daily_balance = worked_hours - jornada_diaria_em_horas
-            total_balance_hours += daily_balance
+        # Só calcula se houver pelo menos uma entrada e uma saída
+        if len(punches_in_day) >= 2:
+            first_punch = punches_in_day[0]
+            last_punch = punches_in_day[-1]
+            
+            # Garante que o dia foi fechado com uma saída
+            if first_punch.tipo == 'entrada' and last_punch.tipo == 'saida':
+                total_seconds_in_day = (last_punch.timestamp - first_punch.timestamp).total_seconds()
+                worked_hours = total_seconds_in_day / 3600
+                daily_balance = worked_hours - jornada_diaria_em_horas
+                total_balance_hours += daily_balance
             
     return round(total_balance_hours, 2)
+
 
 def calcular_saldo_mensal(user, ano, mes):
     """
     Calcula os créditos e débitos de um usuário para um mês/ano específico.
     """
-    # Filtra os registros de ponto para o usuário, ano e mês fornecidos
     punches = RegistroPonto.objects.filter(
         user=user,
         timestamp__year=ano,
@@ -63,34 +63,27 @@ def calcular_saldo_mensal(user, ano, mes):
     total_debits_hours = 0
     jornada_diaria_em_horas = 8.0
 
-    # Agrupa os registros por dia
     for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
         punches_in_day = list(punches_in_day_iter)
-        total_seconds_in_day = 0
         
-        # Calcula o total de horas trabalhadas no dia
-        for i in range(0, len(punches_in_day) - 1, 2):
-            start_punch = punches_in_day[i]
-            end_punch = punches_in_day[i+1]
-            if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
-                time_diff = end_punch.timestamp - start_punch.timestamp
-                total_seconds_in_day += time_diff.total_seconds()
-        
-        worked_hours = total_seconds_in_day / 3600
+        if len(punches_in_day) >= 2:
+            first_punch = punches_in_day[0]
+            last_punch = punches_in_day[-1]
 
-        # Calcula o saldo do dia e separa em crédito ou débito
-        if worked_hours > 0:
-            daily_balance = worked_hours - jornada_diaria_em_horas
-            if daily_balance > 0:
-                total_credits_hours += daily_balance
-            else:
-                total_debits_hours += abs(daily_balance)
+            if first_punch.tipo == 'entrada' and last_punch.tipo == 'saida':
+                total_seconds_in_day = (last_punch.timestamp - first_punch.timestamp).total_seconds()
+                worked_hours = total_seconds_in_day / 3600
+                
+                daily_balance = worked_hours - jornada_diaria_em_horas
+                if daily_balance > 0:
+                    total_credits_hours += daily_balance
+                else:
+                    total_debits_hours += abs(daily_balance)
             
     return {
         'credits': round(total_credits_hours, 2),
         'debits': round(total_debits_hours, 2)
-    }
-# --- Views da API ---
+    }# --- Views da API ---
 
 class HoleriteView(APIView):
     """
@@ -162,14 +155,10 @@ class RegistroPontoViewSet(viewsets.ModelViewSet):
         last_punch = queryset.last()
         
         next_type = 'entrada' # Padrão é entrada
-        if last_punch:
-            type_map = {
-                'entrada': 'saida_almoco',
-                'saida_almoco': 'entrada_almoco',
-                'entrada_almoco': 'saida'
-            }
-            # Se o último tipo estiver no mapa, pega o próximo. Senão, é uma nova entrada.
-            next_type = type_map.get(last_punch.tipo, 'entrada')
+        if last_punch and last_punch.tipo == 'entrada':
+            next_type = 'saida'
+        else:
+            next_type = 'entrada'
         
         # Salva o novo registro com o usuário logado e o tipo calculado
         serializer.save(user=self.request.user, tipo=next_type)
@@ -298,25 +287,22 @@ class GestorDashboardView(APIView):
             punches_today = RegistroPonto.objects.filter(user=funcionario, timestamp__date=hoje)
             last_punch = punches_today.last()
             
-            # Calcula horas trabalhadas hoje
-            worked_seconds_today = 0
             punches_list = list(punches_today)
-            for i in range(0, len(punches_list) - 1, 2):
-                start = punches_list[i]
-                end = punches_list[i+1]
-                if 'entrada' in start.tipo and 'saida' in end.tipo:
-                    worked_seconds_today += (end.timestamp - start.timestamp).total_seconds()
-            
+            worked_seconds_today = 0
+            if len(punches_list) >= 1 and punches_list[0].tipo == 'entrada':
+                 # Se o último registro foi uma saída, calcula o período fechado.
+                 # Se foi uma entrada, calcula até o momento atual.
+                end_time = punches_list[-1].timestamp if punches_list[-1].tipo == 'saida' else timezone.now()
+                worked_seconds_today = (end_time - punches_list[0].timestamp).total_seconds()
+
             worked_hours_today = worked_seconds_today / 3600
             
-            # Define o status
+            # Define o status (lógica simplificada)
             status = "Ausente"
             if last_punch:
                 usuarios_ativos_hoje += 1
-                if last_punch.tipo == 'entrada' or last_punch.tipo == 'entrada_almoco':
+                if last_punch.tipo == 'entrada':
                     status = "Trabalhando"
-                elif last_punch.tipo == 'saida_almoco':
-                    status = "Em pausa"
                 elif last_punch.tipo == 'saida':
                     status = "Finalizado"
 

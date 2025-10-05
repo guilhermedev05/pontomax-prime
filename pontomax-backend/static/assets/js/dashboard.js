@@ -155,8 +155,6 @@ class DashboardManager {
 
         const typeLabels = {
             'entrada': 'Entrada',
-            'saida_almoco': 'Saída Almoço',
-            'entrada_almoco': 'Volta Almoço',
             'saida': 'Saída'
         };
 
@@ -188,23 +186,19 @@ class DashboardManager {
 
         if (todayRecord && todayRecord.entries.length > 0) {
             const lastEntryType = todayRecord.entries[todayRecord.entries.length - 1].type;
-            const actionMap = {
-                'entrada': 'saida_almoco',
-                'saida_almoco': 'entrada_almoco',
-                'entrada_almoco': 'saida'
-            };
-            nextAction = actionMap[lastEntryType] || 'entrada_novo_dia';
+            // Se o último foi entrada, o próximo é saída. Senão, é uma nova entrada.
+            nextAction = (lastEntryType === 'entrada') ? 'saida' : 'entrada_novo_dia';
         }
-
+        
         const buttonStates = {
             'entrada': { text: 'Registrar Entrada', icon: 'log-in' },
-            'saida_almoco': { text: 'Registrar Saída Almoço', icon: 'coffee' },
-            'entrada_almoco': { text: 'Registrar Volta Almoço', icon: 'log-in' },
             'saida': { text: 'Registrar Saída', icon: 'log-out' },
             'entrada_novo_dia': { text: 'Registrar Entrada', icon: 'log-in' }
         };
 
         const state = buttonStates[nextAction];
+        punchBtn.disabled = (nextAction === 'entrada_novo_dia' && todayRecord.entries.some(e => e.type === 'saida'));
+        
         btnText.textContent = state.text;
         btnIcon.setAttribute('data-lucide', state.icon);
         lucide.createIcons(); // Recria o ícone

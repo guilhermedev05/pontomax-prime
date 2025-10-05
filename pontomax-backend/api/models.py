@@ -64,8 +64,6 @@ class Desconto(models.Model):
 class RegistroPonto(models.Model):
     TIPO_CHOICES = [
         ('entrada', 'Entrada'),
-        ('saida_almoco', 'Saída Almoço'),
-        ('entrada_almoco', 'Volta Almoço'),
         ('saida', 'Saída'),
     ]
 
