@@ -906,7 +906,18 @@ class PontoMaxApp {
     }
 
     formatDate(dateString) {
+        // Adiciona uma verificação: se a data for nula ou inválida, retorna um placeholder.
+        if (!dateString) {
+            return '--';
+        }
+
         const date = new Date(dateString);
+
+        // Adiciona uma segunda verificação para o caso de o formato ser inválido
+        if (isNaN(date)) {
+            return '--';
+        }
+
         return date.toLocaleDateString('pt-BR', {
             day: '2-digit',
             month: '2-digit',
@@ -1433,7 +1444,7 @@ class PontoMaxApp {
                 this.renderAdminUserTable(contentContainer);
                 break;
             case 'fechamentos':
-                contentContainer.innerHTML = '<h2>Gerenciamento de Fechamentos (a ser implementado)</h2>';
+                this.renderAdminFechamentoTable(contentContainer);
                 break;
             default:
                 contentContainer.innerHTML = '<h2>Página não encontrada</h2>';
@@ -1486,6 +1497,78 @@ class PontoMaxApp {
 
         } catch (error) {
             container.innerHTML = '<h2>Erro ao carregar usuários.</h2>';
+        }
+    }
+
+    async renderAdminFechamentoTable(container) {
+        try {
+            // 1. Busca os dados do endpoint de admin que já criamos
+            const fechamentos = await window.authManager.apiCall('/admin/fechamentos/');
+
+            // 2. Cria o HTML da tabela para exibir os fechamentos
+            let tableHTML = `
+            <div class="main-card">
+                <div class="card-header-flex">
+                    <h2>Gerenciamento de Fechamentos</h2>
+                    </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Período</th>
+                                <th>Status</th>
+                                <th>Data de Criação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${fechamentos.map(fechamento => `
+                                <tr>
+                                    <td>${fechamento.periodo}</td>
+                                    <td><span class="status-badge">${fechamento.status}</span></td>
+                                    <td>${this.formatDate(fechamento.data_criacao)}</td>
+                                    <td>
+                                        <button class="btn-danger" data-fechamento-id="${fechamento.id}">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+            container.innerHTML = tableHTML;
+            lucide.createIcons();
+
+            // 3. Adiciona o evento de clique para os botões de deletar
+            container.querySelectorAll('.btn-danger').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const fechamentoId = e.currentTarget.dataset.fechamentoId;
+                    this.handleDeleteFechamento(fechamentoId);
+                });
+            });
+
+        } catch (error) {
+            container.innerHTML = '<h2>Erro ao carregar os fechamentos.</h2>';
+        }
+    }
+
+    async handleDeleteFechamento(fechamentoId) {
+        if (!confirm('Tem certeza que deseja remover este registro de fechamento? Todos os holerites gerados associados a ele também serão removidos.')) {
+            return;
+        }
+
+        try {
+            // Usa o endpoint de admin para deletar
+            await window.authManager.apiCall(`/admin/fechamentos/${fechamentoId}/`, {
+                method: 'DELETE'
+            });
+            this.showToast('Sucesso', 'Registro de fechamento removido com sucesso!', 'success');
+            // Recarrega a tabela para mostrar o resultado
+            this.loadAdminSubPage('fechamentos');
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível remover o registro.', 'error');
         }
     }
 }

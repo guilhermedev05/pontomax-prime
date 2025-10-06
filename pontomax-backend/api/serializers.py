@@ -206,4 +206,4 @@ class FechamentoSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Fechamento
-        fields = ['id', 'periodo', 'status', 'holerites_gerados']
+        fields = ['id', 'periodo', 'status', 'data_criacao', 'holerites_gerados']

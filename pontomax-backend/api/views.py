@@ -92,7 +92,15 @@ def calcular_saldo_mensal(user, ano, mes):
 class AdminUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('first_name')
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUser] # <-- Apenas Admins podem acessar
+    permission_classes = [IsAdminUser]
+
+    # ADICIONE ESTE MÉTODO À CLASSE:
+    def get_queryset(self):
+        """
+        Esta view não deve retornar o próprio usuário que está logado na lista.
+        """
+        user = self.request.user
+        return self.queryset.exclude(pk=user.pk)
 
 
 # 3. Adicione ViewSets para outros modelos que você queira gerenciar
