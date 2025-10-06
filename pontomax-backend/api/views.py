@@ -11,7 +11,7 @@ from .models import (
 )
 from django.db import transaction
 from itertools import groupby
-from .serializers import GestorDashboardSerializer, HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer
+from .serializers import GestorDashboardSerializer, HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -489,3 +489,11 @@ class FechamentoViewSet(viewsets.ModelViewSet):
                 holerite_gerado.save()
 
         return Response({'status': 'Holerites publicados com sucesso para os colaboradores.'})
+
+class AdminRegistroPontoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para administradores gerenciarem todos os registros de ponto.
+    """
+    queryset = RegistroPonto.objects.all().order_by('-timestamp') # Mais recentes primeiro
+    serializer_class = AdminRegistroPontoSerializer
+    permission_classes = [IsAdminUser]

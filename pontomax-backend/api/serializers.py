@@ -207,3 +207,16 @@ class FechamentoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Fechamento
         fields = ['id', 'periodo', 'status', 'data_criacao', 'holerites_gerados']
+
+class AdminRegistroPontoSerializer(serializers.ModelSerializer):
+    """
+    Serializer detalhado para a visão do admin, incluindo o nome do usuário.
+    """
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+
+    class Meta:
+        model = RegistroPonto
+        # Garantimos que todos os campos necessários estão aqui
+        fields = ['id', 'user', 'user_name', 'timestamp', 'tipo']
+        # Definimos explicitamente que o 'user' não pode ser alterado via API
+        read_only_fields = ['user', 'user_name']

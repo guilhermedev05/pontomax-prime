@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, RegistrosView, UserProfileView,
     UserViewSet, RegistroPontoViewSet, FechamentoViewSet,
-    AdminUserViewSet, AdminFechamentoViewSet  # Adicione os imports do Admin
+    AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet  # Adicione os imports do Admin
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -21,6 +21,7 @@ router.register(r'fechamentos', FechamentoViewSet, basename='fechamento')
 admin_router = DefaultRouter()
 admin_router.register(r'users', AdminUserViewSet, basename='admin-user')
 admin_router.register(r'fechamentos', AdminFechamentoViewSet, basename='admin-fechamento')
+admin_router.register(r'registros-ponto', AdminRegistroPontoViewSet, basename='admin-registros-ponto')
 
 
 # --- LISTA DE URLS COMPLETA E CORRIGIDA ---

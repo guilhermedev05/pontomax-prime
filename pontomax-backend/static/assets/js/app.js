@@ -205,6 +205,18 @@ class PontoMaxApp {
                 }
             });
         }
+
+        const editRegistroModal = document.getElementById('edit-registro-modal');
+        const editRegistroCloseBtn = document.getElementById('edit-registro-close-btn');
+
+        if (editRegistroModal) {
+            editRegistroModal.addEventListener('click', e => {
+                if (e.target === editRegistroModal) editRegistroModal.classList.add('hidden');
+            });
+        }
+        if (editRegistroCloseBtn) {
+            editRegistroCloseBtn.addEventListener('click', () => editRegistroModal.classList.add('hidden'));
+        }
     }
 
     resetFechamento() {
@@ -1411,7 +1423,10 @@ class PontoMaxApp {
                         <i data-lucide="calendar-check"></i>
                         <span>Fechamentos</span>
                     </a>
-                    {/* Adicionar mais links aqui no futuro */}
+                    <a href="#admin/registros" class="admin-nav-item" data-admin-page="registros">
+                        <i data-lucide="history"></i>
+                        <span>Registros de Ponto</span>
+                    </a>
                 </nav>
             </aside>
             <main id="admin-main-content" class="admin-main-content">
@@ -1445,6 +1460,9 @@ class PontoMaxApp {
                 break;
             case 'fechamentos':
                 this.renderAdminFechamentoTable(contentContainer);
+                break;
+            case 'registros':
+                this.renderAdminRegistrosTable(contentContainer);
                 break;
             default:
                 contentContainer.innerHTML = '<h2>Página não encontrada</h2>';
@@ -1569,6 +1587,121 @@ class PontoMaxApp {
             this.loadAdminSubPage('fechamentos');
         } catch (error) {
             this.showToast('Erro', 'Não foi possível remover o registro.', 'error');
+        }
+    }
+
+    async renderAdminRegistrosTable(container) {
+        try {
+            const registros = await window.authManager.apiCall('/admin/registros-ponto/');
+
+            let tableHTML = `
+            <div class="main-card">
+                <div class="card-header-flex"><h2>Todos os Registros de Ponto</h2></div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead><tr><th>Funcionário</th><th>Data e Hora</th><th>Tipo</th><th>Ações</th></tr></thead>
+                        <tbody>
+                            ${registros.map(reg => `
+                                <tr>
+                                    <td>${reg.user_name}</td>
+                                    <td>${new Date(reg.timestamp).toLocaleString('pt-BR')}</td>
+                                    <td>${reg.tipo}</td>
+                                    <td>
+                                        <button class="btn-outline" data-registro-id="${reg.id}">
+                                            <i data-lucide="edit"></i>
+                                        </button>
+                                        <button class="btn-danger" data-registro-id="${reg.id}">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+            container.innerHTML = tableHTML;
+            lucide.createIcons();
+
+            container.querySelectorAll('button[data-registro-id]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const registroId = e.currentTarget.dataset.registroId;
+                    if (e.currentTarget.classList.contains('btn-danger')) {
+                        this.handleDeleteRegistroPonto(registroId);
+                    } else {
+                        this.openEditRegistroModal(registroId);
+                    }
+                });
+            });
+
+        } catch (error) {
+            container.innerHTML = '<h2>Erro ao carregar registros de ponto.</h2>';
+        }
+    }
+
+    async handleDeleteRegistroPonto(registroId) {
+        if (!confirm('Tem certeza que deseja remover este registro de ponto? Esta ação é irreversível.')) {
+            return;
+        }
+        try {
+            await window.authManager.apiCall(`/admin/registros-ponto/${registroId}/`, {
+                method: 'DELETE'
+            });
+            this.showToast('Sucesso', 'Registro de ponto removido!', 'success');
+            this.loadAdminSubPage('registros'); // Recarrega a tabela
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível remover o registro.', 'error');
+        }
+    }
+
+    async openEditRegistroModal(registroId) {
+        const modal = document.getElementById('edit-registro-modal');
+        if (!modal) return;
+
+        try {
+            // 1. Busca os dados atuais do registro na API
+            const registro = await window.authManager.apiCall(`/admin/registros-ponto/${registroId}/`);
+
+            // 2. Preenche os campos do formulário
+            modal.querySelector('#edit-registro-user').value = registro.user_name;
+            modal.querySelector('#edit-registro-tipo').value = registro.tipo;
+
+            // 3. Inicializa o seletor de data/hora (Flatpickr)
+            const timestampInput = modal.querySelector('#edit-registro-timestamp');
+            flatpickr(timestampInput, {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: registro.timestamp,
+                locale: "pt",
+            });
+
+            // 4. Configura o botão Salvar e abre o modal
+            modal.querySelector('#edit-registro-save-btn').onclick = () => this.handleUpdateRegistroPonto(registroId);
+            modal.classList.remove('hidden');
+
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível carregar os dados do registro.', 'error');
+        }
+    }
+
+    async handleUpdateRegistroPonto(registroId) {
+        const modal = document.getElementById('edit-registro-modal');
+        const payload = {
+            timestamp: modal.querySelector('#edit-registro-timestamp').value,
+            tipo: modal.querySelector('#edit-registro-tipo').value
+        };
+
+        try {
+            await window.authManager.apiCall(`/admin/registros-ponto/${registroId}/`, {
+                method: 'PATCH', // PATCH é melhor para atualizações parciais
+                body: JSON.stringify(payload)
+            });
+
+            this.showToast('Sucesso', 'Registro atualizado com sucesso!', 'success');
+            modal.classList.add('hidden');
+            this.loadAdminSubPage('registros'); // Recarrega a tabela
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível atualizar o registro.', 'error');
         }
     }
 }

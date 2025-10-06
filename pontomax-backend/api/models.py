@@ -70,7 +70,7 @@ class RegistroPonto(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='registros_ponto')
-    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Data e Hora do Registro")
+    timestamp = models.DateTimeField(default=timezone.now, verbose_name="Data e Hora do Registro")
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
 
     class Meta:
