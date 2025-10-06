@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="{% static 'assets/css/registros.css' %}">
     <link rel="stylesheet" href="{% static 'assets/css/holerite.css' %}">
     <link rel="stylesheet" href="{% static 'assets/css/gestor.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/admin.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 
@@ -77,6 +78,9 @@
         <header class="header">
             <div class="header-content">
                 <div class="header-left">
+                    <button class="hamburger-btn hidden" id="hamburger-btn" aria-label="Abrir menu">
+                        <i data-lucide="menu"></i>
+                    </button>
                     <div class="logo-header">
                         <div class="logo-icon">
                             <img src="{% static 'assets/images/logo.svg' %}" alt="PontoMax Logo" class="header-logo-svg">
@@ -85,29 +89,27 @@
                     </div>
                 </div>
 
-                <nav class="nav-menu">
-                    <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <nav class="nav-menu" id="nav-menu-horizontal">
+                    <a href="#dashboard" class="nav-item" data-page="dashboard">
                         <i data-lucide="layout-dashboard"></i> Dashboard
                     </a>
                     <a href="#registros" class="nav-item" data-page="registros">
-                        <i data-lucide="clock"></i>
-                        Meus Registros
+                        <i data-lucide="clock"></i> Meus Registros
                     </a>
                     <a href="#holerite" class="nav-item" data-page="holerite">
-                        <i data-lucide="dollar-sign"></i>
-                        Meu Holerite
+                        <i data-lucide="dollar-sign"></i> Meu Holerite
                     </a>
                     <a href="#equipe" class="nav-item" data-page="equipe">
-                        <i data-lucide="users"></i>
-                        Equipe
+                        <i data-lucide="users"></i> Equipe
                     </a>
                     <a href="#banco-horas" class="nav-item" data-page="banco-horas">
-                        <i data-lucide="database"></i>
-                        Banco de Horas
+                        <i data-lucide="database"></i> Banco de Horas
                     </a>
                     <a href="#fechamento" class="nav-item" data-page="fechamento">
-                        <i data-lucide="calendar-check"></i>
-                        Fechamento
+                        <i data-lucide="calendar-check"></i> Fechamento
+                    </a>
+                    <a href="#admin" class="nav-item" data-page="admin">
+                        <i data-lucide="shield-check"></i> Admin
                     </a>
                 </nav>
 
@@ -140,6 +142,19 @@
                 </div>
             </div>
         </header>
+
+        <aside id="sidebar-menu" class="sidebar-menu">
+            <div class="sidebar-header">
+                <h2>Menu</h2>
+                <button class="close-btn" id="sidebar-close-btn" aria-label="Fechar menu">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav" id="sidebar-nav-links"></nav>
+        </aside>
+
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
 
         <!-- Main Content -->
         <main class="main-content">
@@ -338,6 +353,8 @@
 
             <div id="banco-horas-page" class="content-page">
             </div>
+
+            <div id="admin-page" class="content-page"></div>
         </main>
     </div>
 

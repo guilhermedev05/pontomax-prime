@@ -176,6 +176,35 @@ class PontoMaxApp {
                 }
             });
         }
+
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const sidebarMenu = document.getElementById('sidebar-menu');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+
+        const openSidebar = () => {
+            sidebarMenu.classList.add('is-open');
+            sidebarOverlay.classList.add('is-open');
+        };
+
+        const closeSidebar = () => {
+            sidebarMenu.classList.remove('is-open');
+            sidebarOverlay.classList.remove('is-open');
+        };
+
+        if (hamburgerBtn) hamburgerBtn.addEventListener('click', openSidebar);
+        if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
+        if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
+
+        // Adicionamos o listener ao container, pois os links serão criados dinamicamente
+        const sidebarNav = document.getElementById('sidebar-nav-links');
+        if (sidebarNav) {
+            sidebarNav.addEventListener('click', (e) => {
+                if (e.target.closest('.nav-item')) {
+                    closeSidebar();
+                }
+            });
+        }
     }
 
     resetFechamento() {
@@ -191,7 +220,12 @@ class PontoMaxApp {
         setTimeout(() => {
             if (window.authManager.isLoggedIn()) {
                 window.authManager.showMainApp();
-                this.navigateToPage('dashboard');
+                const user = window.authManager.getCurrentUser();
+                if (user && user.profile.perfil === 'ADMIN') {
+                    this.navigateToPage('admin'); // Direciona para o painel de admin
+                } else {
+                    this.navigateToPage('dashboard'); // Direciona para o dashboard normal
+                }
             } else {
                 window.authManager.showLoginPage();
             }
@@ -216,7 +250,13 @@ class PontoMaxApp {
             if (result.success) {
                 this.showToast('Sucesso', 'Login realizado com sucesso!', 'success');
                 window.authManager.showMainApp();
-                this.navigateToPage('dashboard');
+                // DEPOIS:
+                const user = window.authManager.getCurrentUser();
+                if (user && user.profile.perfil === 'ADMIN') {
+                    this.navigateToPage('admin'); // Direciona para o painel de admin
+                } else {
+                    this.navigateToPage('dashboard'); // Direciona para o dashboard normal
+                }
             } else {
                 this.showToast('Erro', result.error || 'Credenciais inválidas', 'error');
             }
@@ -316,6 +356,9 @@ class PontoMaxApp {
                 break;
             case 'banco-horas': // <-- ADICIONE ESTE CASE
                 this.loadBancoHorasData();
+                break;
+            case 'admin':
+                this.loadAdminPage(); // Vamos criar esta função
                 break;
             default:
                 // Não faz nada se a página não for encontrada
@@ -593,6 +636,10 @@ class PontoMaxApp {
             // MUDANÇA: Busca os dados da API em vez de usar o mock
             const gestorData = await window.authManager.apiCall('/dashboard-gestor/');
 
+
+            // --- ADICIONE ESTA LINHA PARA DEPURAR ---
+            console.log("Dados recebidos do dashboard do gestor:", gestorData);
+            // -----------------------------------------
             // O RESTO DO CÓDIGO PARA RENDERIZAR O HTML CONTINUA EXATAMENTE O MESMO
             // A API foi desenhada para retornar os dados no formato que esta função já espera.
 
@@ -883,7 +930,7 @@ class PontoMaxApp {
     }
 
     // Em app.js, adicione estas duas novas funções à classe PontoMaxApp
-    async openEmployeeModal(employeeId) {
+    async openEmployeeModal(employeeId, isAdmin = False) {
         const modal = document.getElementById('employee-modal');
         // Guardamos o ID no próprio elemento do modal para fácil acesso
         modal.dataset.employeeId = employeeId;
@@ -908,6 +955,22 @@ class PontoMaxApp {
             // O valor da hora já está no nível principal, então continua igual
             document.getElementById('modal-hourly-rate').value =
                 parseFloat(employee.valor_hora || 0).toFixed(2).replace('.', ',');
+
+            const roleFieldContainer = document.getElementById('modal-role').parentElement;
+
+            if (isAdmin) {
+                roleFieldContainer.innerHTML = `
+                <label for="modal-role">Cargo</label>
+                <select id="modal-role" class="form-select">
+                    <option value="COLABORADOR">Colaborador</option>
+                    <option value="GESTOR">Gestor</option>
+                    <option value="ADMIN">Admin</option>
+                </select>
+            `;
+                document.getElementById('modal-role').value = employee.profile.perfil;
+            } else {
+                document.getElementById('modal-role').value = employee.profile.perfil;
+            }
             modal.classList.remove('hidden');
         } catch (error) {
             console.error("Erro ao buscar detalhes do funcionário:", error);
@@ -919,12 +982,29 @@ class PontoMaxApp {
         document.getElementById('employee-modal').classList.add('hidden');
     }
 
-    openRegisterModal() {
-        // Limpa os campos antes de abrir
+    openRegisterModal(isAdmin = false) {
         const form = document.querySelector('#register-employee-modal .modal-form');
         if (form) form.reset();
 
-        // Mostra o modal
+        const roleInput = document.getElementById('register-role');
+
+        if (isAdmin) {
+            // Se for admin, criamos um <select>
+            const parent = roleInput.parentElement;
+            parent.innerHTML = `
+            <label for="register-role">Cargo</label>
+            <select id="register-role" class="form-select" required>
+                <option value="COLABORADOR">Colaborador</option>
+                <option value="GESTOR">Gestor</option>
+                <option value="ADMIN">Admin</option>
+            </select>
+        `;
+        } else {
+            // Se não, voltamos ao input readonly
+            roleInput.value = 'Colaborador';
+            roleInput.readOnly = true;
+        }
+
         document.getElementById('register-employee-modal').classList.remove('hidden');
     }
 
@@ -1163,7 +1243,7 @@ class PontoMaxApp {
             email: document.getElementById('register-email').value,
             password: document.getElementById('register-password').value,
             profile: {
-                perfil: 'COLABORADOR',
+                perfil: document.getElementById('register-role').value,
                 // Lógica igual à da função de ATUALIZAR:
                 salario_base: salarioStr ? parseFloat(salarioStr) : null,
                 horas_mensais: horasStr ? parseInt(horasStr) : null
@@ -1178,7 +1258,11 @@ class PontoMaxApp {
             });
             this.showToast('Sucesso', 'Funcionário cadastrado com sucesso!', 'success');
             this.closeRegisterModal();
-            this.loadEquipeData(); // Recarrega a lista da equipe
+            if (this.currentPage === 'admin') {
+                this.loadAdminSubPage('users'); // Atualiza a tabela do painel de admin
+            } else {
+                this.loadEquipeData(); // Comportamento original para a página "Equipe" do gestor
+            }
         } catch (error) {
             // Tenta mostrar um erro mais específico (ex: "email já existe")
             const errorMessage = error?.email?.[0] || 'Não foi possível cadastrar o funcionário.';
@@ -1221,7 +1305,11 @@ class PontoMaxApp {
             });
             this.showToast('Sucesso', 'Alterações salvas com sucesso!', 'success');
             this.closeEmployeeModal();
-            this.loadEquipeData();
+            if (this.currentPage === 'admin') {
+                this.loadAdminSubPage('users'); // Atualiza a tabela do admin
+            } else {
+                this.loadEquipeData(); // Atualiza a tabela do gestor
+            }
         } catch (error) {
             const errorMessage = error?.email?.[0] || 'Não foi possível salvar as alterações.';
             this.showToast('Erro', errorMessage, 'error');
@@ -1240,7 +1328,11 @@ class PontoMaxApp {
             });
             this.showToast('Sucesso', 'Funcionário removido com sucesso!', 'success');
             this.closeEmployeeModal();
-            this.loadEquipeData(); // Recarrega a lista
+            if (this.currentPage === 'admin') {
+                this.loadAdminSubPage('users'); // Atualiza a tabela do admin
+            } else {
+                this.loadEquipeData(); // Atualiza a tabela do gestor
+            }
         } catch (error) {
             this.showToast('Erro', 'Não foi possível remover o funcionário.', 'error');
         }
@@ -1285,6 +1377,116 @@ class PontoMaxApp {
         // Garante que o estado inicial da página está limpo
         document.getElementById('payslip-content-wrapper').classList.add('hidden');
         document.getElementById('payslip-empty-state').classList.add('hidden');
+    }
+
+    loadAdminPage() {
+        const pageContainer = document.getElementById('admin-page');
+        if (!pageContainer) return;
+
+        // Este é o layout base do nosso painel de admin
+        pageContainer.innerHTML = `
+        <div class="page-header">
+            <h1>Painel Administrativo</h1>
+            <p>Gerenciamento completo do sistema PontoMax.</p>
+        </div>
+        <div class="admin-layout">
+            <aside class="admin-sidebar">
+                <nav class="admin-nav">
+                    <a href="#admin/users" class="admin-nav-item active" data-admin-page="users">
+                        <i data-lucide="users"></i>
+                        <span>Usuários</span>
+                    </a>
+                    <a href="#admin/fechamentos" class="admin-nav-item" data-admin-page="fechamentos">
+                        <i data-lucide="calendar-check"></i>
+                        <span>Fechamentos</span>
+                    </a>
+                    {/* Adicionar mais links aqui no futuro */}
+                </nav>
+            </aside>
+            <main id="admin-main-content" class="admin-main-content">
+
+            </main>
+        </div>
+    `;
+        lucide.createIcons();
+
+        // Carrega a primeira sub-página por padrão (Usuários)
+        this.loadAdminSubPage('users');
+
+        // Adiciona eventos de clique para a navegação do admin
+        pageContainer.querySelectorAll('.admin-nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                pageContainer.querySelectorAll('.admin-nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                this.loadAdminSubPage(item.dataset.adminPage);
+            });
+        });
+    }
+
+    loadAdminSubPage(subPage) {
+        const contentContainer = document.getElementById('admin-main-content');
+        if (!contentContainer) return;
+
+        switch (subPage) {
+            case 'users':
+                this.renderAdminUserTable(contentContainer);
+                break;
+            case 'fechamentos':
+                contentContainer.innerHTML = '<h2>Gerenciamento de Fechamentos (a ser implementado)</h2>';
+                break;
+            default:
+                contentContainer.innerHTML = '<h2>Página não encontrada</h2>';
+        }
+    }
+
+    async renderAdminUserTable(container) {
+        try {
+            // Usa o novo endpoint de admin que criamos
+            const users = await window.authManager.apiCall('/admin/users/');
+
+            // Cria o HTML da tabela
+            let tableHTML = `
+        <div class="main-card">
+            <div class="card-header-flex">
+                <h2>Todos os Usuários</h2>
+                <button class="btn-primary" id="admin-add-user-btn"><i data-lucide="plus"></i> Adicionar Usuário</button>
+            </div>
+            <div class="table-wrapper">
+                <table class="team-list-table">
+                    <thead><tr><th>Nome</th><th>E-mail</th><th>Cargo</th><th>Ações</th></tr></thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>${user.nome}</td>
+                                <td>${user.email}</td>
+                                <td><span class="user-role">${user.profile.perfil}</span></td>
+                                <td><button class="btn-outline" data-employee-id="${user.id}">Editar</button></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+            container.innerHTML = tableHTML;
+            lucide.createIcons();
+
+            // Adiciona eventos aos botões "Editar" e "Adicionar"
+            container.querySelector('#admin-add-user-btn').addEventListener('click', () => {
+                // Reutilizamos o modal de registro que já existe!
+                this.openRegisterModal(true); // Passamos 'true' para indicar que é um admin
+            });
+            container.querySelectorAll('.btn-outline').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const userId = e.currentTarget.dataset.employeeId;
+                    // Reutilizamos o modal de edição que já existe!
+                    this.openEmployeeModal(userId, true); // Passamos 'true' para indicar que é um admin
+                });
+            });
+
+        } catch (error) {
+            container.innerHTML = '<h2>Erro ao carregar usuários.</h2>';
+        }
     }
 }
 

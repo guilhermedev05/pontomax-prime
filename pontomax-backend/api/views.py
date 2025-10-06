@@ -21,6 +21,7 @@ from rest_framework.generics import ListAPIView
 from .serializers import FechamentoSerializer
 from rest_framework.decorators import action
 from decimal import Decimal
+from .permissions import IsAdminUser
 
 def calcular_saldo_banco_horas(user):
     """
@@ -84,6 +85,22 @@ def calcular_saldo_mensal(user, ano, mes):
         'credits': round(total_credits_hours, 2),
         'debits': round(total_debits_hours, 2)
     }# --- Views da API ---
+
+# 2. Crie uma ViewSet específica para a administração de usuários
+#    Ela é uma cópia da UserViewSet, mas protegida pela permissão de Admin
+#    e não tem os filtros que escondem o admin ou o próprio usuário.
+class AdminUserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('first_name')
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser] # <-- Apenas Admins podem acessar
+
+
+# 3. Adicione ViewSets para outros modelos que você queira gerenciar
+#    Exemplo para o modelo de Fechamento:
+class AdminFechamentoViewSet(viewsets.ModelViewSet):
+    queryset = Fechamento.objects.all().order_by('-periodo')
+    serializer_class = FechamentoSerializer
+    permission_classes = [IsAdminUser]
 
 class HoleriteView(APIView):
     """

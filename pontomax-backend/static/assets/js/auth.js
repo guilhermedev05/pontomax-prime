@@ -94,7 +94,7 @@ class AuthManager {
         const permissions = {
             'COLABORADOR': ['dashboard', 'registros', 'holerite', 'perfil'],
             'GESTOR': ['dashboard', 'perfil', 'equipe', 'banco-horas', 'fechamento'],
-            'ADMIN': ['dashboard', 'registros', 'holerite', 'perfil', 'equipe', 'banco-horas', 'fechamento', 'configuracoes', 'organizacao']
+            'ADMIN': ['dashboard', 'registros', 'holerite', 'perfil', 'equipe', 'banco-horas', 'fechamento', 'configuracoes', 'organizacao', 'admin']
         };
 
         // CORREÇÃO: Acessa o 'perfil' dentro do objeto aninhado 'profile'
@@ -136,16 +136,44 @@ class AuthManager {
     }
 
     updateNavigation() {
-        const navItems = document.querySelectorAll('.nav-item');
+        const userRole = this.currentUser.profile.perfil;
 
-        navItems.forEach(item => {
-            const page = item.getAttribute('data-page');
-            if (page && !this.hasPermission(page)) {
-                item.style.display = 'none';
-            } else {
-                item.style.display = 'flex';
-            }
-        });
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const navHorizontal = document.getElementById('nav-menu-horizontal');
+        const sidebarNavContainer = document.getElementById('sidebar-nav-links');
+        
+        // Clona os links do menu horizontal para não perdê-los
+        const allNavLinks = Array.from(navHorizontal.querySelectorAll('.nav-item'));
+
+        if (userRole === 'ADMIN') {
+            // LÓGICA PARA O ADMIN
+            hamburgerBtn.classList.remove('hidden');
+            navHorizontal.classList.add('hidden'); // Esconde o menu horizontal
+            sidebarNavContainer.innerHTML = ''; // Limpa o menu lateral
+
+            // Filtra e adiciona os links permitidos ao menu lateral
+            allNavLinks.forEach(link => {
+                const page = link.dataset.page;
+                if (page && this.hasPermission(page)) {
+                    sidebarNavContainer.appendChild(link.cloneNode(true));
+                }
+            });
+
+        } else {
+            // LÓGICA PARA GESTOR E COLABORADOR
+            hamburgerBtn.classList.add('hidden');
+            navHorizontal.classList.remove('hidden'); // Mostra o menu horizontal
+
+            // Filtra os links no menu horizontal
+            allNavLinks.forEach(link => {
+                const page = link.dataset.page;
+                if (page && this.hasPermission(page)) {
+                    link.style.display = 'flex';
+                } else {
+                    link.style.display = 'none';
+                }
+            });
+        }
     }
 
     // Método para fazer chamadas autenticadas para a API

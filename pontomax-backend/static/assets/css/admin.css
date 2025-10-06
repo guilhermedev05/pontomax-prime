@@ -1,0 +1,40 @@
+/* Estilos do Layout do Admin */
+.admin-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 1.5rem;
+}
+.admin-sidebar {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: var(--shadow-md);
+}
+.admin-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--muted-foreground);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.admin-nav-item:hover {
+    background: var(--background);
+    color: var(--foreground);
+}
+.admin-nav-item.active {
+    background: hsl(217, 91%, 60%, 0.1);
+    color: var(--primary);
+    font-weight: 600;
+}
+.admin-main-content {
+    /* O conteúdo será inserido aqui */
+}

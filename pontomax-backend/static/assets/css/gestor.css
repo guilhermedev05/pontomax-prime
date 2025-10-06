@@ -599,6 +599,73 @@
     animation: shrink 5s linear forwards;
 }
 
+.hamburger-btn {
+    background: none;
+    border: none;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+    border-radius: var(--radius);
+}
+.hamburger-btn:hover {
+    background-color: var(--background);
+}
+.hamburger-btn.hidden {
+    display: none;
+}
+
+/* Container do Menu Lateral (Sidebar) */
+.sidebar-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100%;
+    background: var(--card);
+    box-shadow: var(--shadow-lg);
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+}
+.sidebar-menu.is-open {
+    transform: translateX(0);
+}
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+.sidebar-header h2 { font-size: 1.25rem; font-weight: 600; }
+.close-btn { background: none; border: none; cursor: pointer; color: var(--muted-foreground); }
+
+.sidebar-nav {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.sidebar-nav .nav-item { padding: 0.75rem 1rem; }
+
+/* Fundo Escurecido (Overlay) */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1050;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+.sidebar-overlay.is-open { opacity: 1; visibility: visible; }
+
 /* Animação que faz a barra encolher da direita para a esquerda */
 @keyframes shrink {
     from {
