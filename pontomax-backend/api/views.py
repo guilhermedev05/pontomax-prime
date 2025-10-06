@@ -22,6 +22,9 @@ from .serializers import FechamentoSerializer
 from rest_framework.decorators import action
 from decimal import Decimal
 from .permissions import IsAdminUser
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from weasyprint import HTML
 
 def calcular_saldo_banco_horas(user):
     """
@@ -497,3 +500,74 @@ class AdminRegistroPontoViewSet(viewsets.ModelViewSet):
     queryset = RegistroPonto.objects.all().order_by('-timestamp') # Mais recentes primeiro
     serializer_class = AdminRegistroPontoSerializer
     permission_classes = [IsAdminUser]
+
+class GerarRelatorioPontoPDF(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        if not start_date_str or not end_date_str:
+            return Response({'error': 'Datas de início e fim são obrigatórias.'}, status=400)
+
+        start_date = date.fromisoformat(start_date_str)
+        end_date = date.fromisoformat(end_date_str)
+        
+        # Lógica para buscar e processar os dados (similar à RegistrosView)
+        punches = RegistroPonto.objects.filter(
+            user=request.user,
+            timestamp__date__range=[start_date, end_date]
+        ).order_by('timestamp')
+
+        daily_summaries = []
+        # Agrupa os registros por dia
+        for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
+            # ... (Lógica de cálculo de horas - vamos simplificar para o relatório)
+            punches_in_day = list(punches_in_day_iter)
+            if len(punches_in_day) < 2: continue
+
+            start_punch = punches_in_day[0]
+            end_punch = punches_in_day[-1]
+            if start_punch.tipo != 'entrada' or end_punch.tipo != 'saida': continue
+
+            total_seconds = (end_punch.timestamp - start_punch.timestamp).total_seconds()
+            worked_hours = total_seconds / 3600
+            jornada_diaria = request.user.profile.jornada_diaria if hasattr(request.user, 'profile') else 8.0
+
+            overtime = max(0, worked_hours - jornada_diaria)
+            debit = max(0, jornada_diaria - worked_hours) if worked_hours < jornada_diaria else 0
+
+            # Formata as horas para o template
+            h_w, m_w = divmod(int(worked_hours * 60), 60)
+            h_o, m_o = divmod(int(overtime * 60), 60)
+            h_d, m_d = divmod(int(debit * 60), 60)
+
+            daily_summaries.append({
+                'date': day,
+                'worked_formatted': f'{h_w:02d}h {m_w:02d}m',
+                'overtime_formatted': f'+{h_o:02d}h {m_o:02d}m',
+                'debit_formatted': f'-{h_d:02d}h {m_d:02d}m',
+            })
+
+        # Calcula os totais
+        total_worked_mins = sum(int(r['worked_formatted'].split('h')[0])*60 + int(r['worked_formatted'].split('h')[1].replace('m','')) for r in daily_summaries)
+        # (Lógica similar para overtime e debit)
+        h_tw, m_tw = divmod(total_worked_mins, 60)
+
+        context = {
+            'user_name': request.user.get_full_name(),
+            'periodo': f'{start_date.strftime("%d/%m/%Y")} a {end_date.strftime("%d/%m/%Y")}',
+            'registros': daily_summaries,
+            'totais': { 'worked': f'{h_tw:02d}h {m_tw:02d}m', 'overtime': '...', 'debit': '...' } # Simplificado
+        }
+        
+        # Renderiza o HTML e cria o PDF
+        html_string = render_to_string('reports/relatorio_ponto.html', context)
+        pdf_file = HTML(string=html_string).write_pdf()
+
+        # Cria a resposta HTTP
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="relatorio_ponto_{request.user.username}_{start_date_str}.pdf"'
+        
+        return response

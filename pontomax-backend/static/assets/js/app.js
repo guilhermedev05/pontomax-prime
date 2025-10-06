@@ -390,6 +390,7 @@ class PontoMaxApp {
     async loadRegistrosData() {
         const recordsList = document.getElementById('records-table-body');
         const periodInput = document.getElementById('period-filter');
+        const downloadBtn = document.getElementById('btn-download-pdf');
 
         if (!recordsList || !periodInput) return;
 
@@ -432,6 +433,23 @@ class PontoMaxApp {
             document.getElementById('summary-overtime').textContent = `+${this.formatHours(totalOvertime, true)}`;
             document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
         };
+
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => {
+                const dates = fp.selectedDates; // 'fp' é a instância do flatpickr
+                if (dates.length < 2) {
+                    this.showToast('Aviso', 'Selecione um intervalo de datas para gerar o relatório.', 'warning');
+                    return;
+                }
+
+                const formatDateForAPI = (date) => date.toISOString().split('T')[0];
+                const startDateStr = formatDateForAPI(dates[0]);
+                const endDateStr = formatDateForAPI(dates[1]);
+
+                const url = `/api/registros/exportar_pdf/?start_date=${startDateStr}&end_date=${endDateStr}`;
+                window.open(url, '_blank');
+            });
+        }
 
         // MUDANÇA PRINCIPAL: Função que busca os dados da API
         const fetchAndRenderRecords = async () => {

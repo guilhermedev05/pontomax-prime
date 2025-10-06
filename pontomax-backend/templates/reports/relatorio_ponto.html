@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-A">
+    <title>Relatório de Ponto</title>
+    <style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10pt; color: #333; }
+        h1 { color: #1C3EC5; font-size: 18pt; text-align: center; margin-bottom: 0; }
+        h2 { font-size: 14pt; text-align: center; margin-top: 0; margin-bottom: 20px; color: #666; }
+        p { margin: 5px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .total-row { background-color: #f2f2f2; font-weight: bold; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>PontoMax</h1>
+    <h2>Relatório de Ponto do Colaborador</h2>
+
+    <p><strong>Funcionário:</strong> {{ user_name }}</p>
+    <p><strong>Período:</strong> {{ periodo }}</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Total Trabalhado</th>
+                <th>Horas Extras</th>
+                <th>Débito</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.date|date:"d/m/Y" }}</td>
+                <td>{{ registro.worked_formatted }}</td>
+                <td class="positive">{{ registro.overtime_formatted }}</td>
+                <td class="negative">{{ registro.debit_formatted }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td><strong>{{ totais.worked }}</strong></td>
+                <td class="positive"><strong>{{ totais.overtime }}</strong></td>
+                <td class="negative"><strong>{{ totais.debit }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+</body>
+</html>

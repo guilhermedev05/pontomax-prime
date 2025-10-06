@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, RegistrosView, UserProfileView,
     UserViewSet, RegistroPontoViewSet, FechamentoViewSet,
-    AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet  # Adicione os imports do Admin
+    AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet, GerarRelatorioPontoPDF  # Adicione os imports do Admin
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -35,7 +35,7 @@ urlpatterns = [
     path('banco-horas/saldo/', BancoHorasSaldoView.as_view(), name='banco-horas-saldo'),
     path('banco-horas/equipe/', BancoHorasEquipeView.as_view(), name='banco-horas-equipe'),
     path('dashboard-gestor/', GestorDashboardView.as_view(), name='dashboard-gestor'), # <-- A ROTA QUE ESTAVA FALTANDO
-
+    path('registros/exportar_pdf/', GerarRelatorioPontoPDF.as_view(), name='relatorio_pdf'),
     # Novas rotas do painel de admin
     path('admin/', include(admin_router.urls)),
     
