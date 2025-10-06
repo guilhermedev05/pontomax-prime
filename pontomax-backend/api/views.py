@@ -353,9 +353,18 @@ class FechamentoViewSet(viewsets.ModelViewSet):
         dados_revisao = []
         for funcionario in equipe:
             saldo_mensal = calcular_saldo_mensal(funcionario, ano, mes)
+            
+            enviado = False
+            try:
+                holerite_gerado = HoleriteGerado.objects.get(fechamento=fechamento, user=funcionario)
+                enviado = holerite_gerado.enviado
+            except HoleriteGerado.DoesNotExist:
+                pass # Se não foi gerado, obviamente não foi enviado
+            
             dados_revisao.append({
                 'name': funcionario.get_full_name(),
-                'balance': saldo_mensal['credits'] - saldo_mensal['debits']
+                'balance': saldo_mensal['credits'] - saldo_mensal['debits'],
+                'enviado': enviado # <-- Nova informação enviada para o frontend
             })
 
         return Response({

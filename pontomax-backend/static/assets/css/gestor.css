@@ -542,6 +542,73 @@
     color: var(--muted-foreground);
 }
 
+.closing-table .sent-row {
+    background-color: #f9fafb; /* Cinza bem claro */
+    color: #9ca3af; /* Texto cinza */
+}
+
+.closing-table .sent-row td {
+    opacity: 0.7;
+}
+
+.success-message-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    gap: 1rem;
+}
+
+.success-message-container i[data-lucide="check-circle"] {
+    color: #10b981; /* success-color */
+    width: 64px;
+    height: 64px;
+    stroke-width: 1.5;
+}
+
+.success-message-container h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.success-message-container p {
+    color: #6b7280; /* text-gray-500 */
+    max-width: 350px;
+}
+
+/* --- Estilos da barra de contagem regressiva --- */
+
+.countdown-bar-container {
+    width: 100%;
+    max-width: 200px; /* Largura da barra */
+    height: 4px;
+    background-color: #e5e7eb; /* Cor de fundo da barra */
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.countdown-bar {
+    height: 100%;
+    width: 100%;
+    background-color: #9ca3af; /* Cor da barra que encolhe */
+    border-radius: 4px;
+    /* Aplica a animação 'shrink' que definimos abaixo */
+    animation: shrink 5s linear forwards;
+}
+
+/* Animação que faz a barra encolher da direita para a esquerda */
+@keyframes shrink {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0%;
+    }
+}
+
 /* Responsividade */
 
 

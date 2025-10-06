@@ -74,6 +74,8 @@ class PontoMaxApp {
         this.checkAuthentication();
     }
 
+
+
     setupEventListeners() {
         // Formulário de login
         const registerForm = document.querySelector('#register-employee-modal form');
@@ -174,6 +176,14 @@ class PontoMaxApp {
                 }
             });
         }
+    }
+
+    resetFechamento() {
+        // Limpa os dados do fechamento que estava em andamento
+        this.currentFechamento = null;
+        this.dadosRevisao = null;
+        // Recarrega a página de fechamento, que voltará ao Passo 1 por não ter dados
+        this.loadFechamentoData();
     }
 
     checkAuthentication() {
@@ -326,7 +336,7 @@ class PontoMaxApp {
         const recordsList = document.getElementById('records-table-body');
         const periodInput = document.getElementById('period-filter');
 
-        if (!recordsList || !periodInput ) return;
+        if (!recordsList || !periodInput) return;
 
         // Helper para formatar a data para o formato YYYY-MM-DD
         const formatDateForAPI = (date) => date.toISOString().split('T')[0];
@@ -711,7 +721,7 @@ class PontoMaxApp {
                         // ANTES:
                         // const workedHours = member.workedHours || 6;
                         // const dailyGoal = member.dailyGoal || 8;
-                        
+
                         // DEPOIS (versão dinâmica):
                         const workedHours = member.horas_trabalhadas_hoje;
                         const dailyGoal = member.profile.jornada_diaria;
@@ -802,7 +812,7 @@ class PontoMaxApp {
         console.log('Registrando ponto:', timeString);
     }
 
-    showToast(title, message, type = 'info') {
+    showToast(title, message, type = 'info', onclose = null) {
         const toastContainer = document.getElementById('toast-container');
         if (!toastContainer) return;
 
@@ -827,25 +837,25 @@ class PontoMaxApp {
             </button>
         `;
 
-        // Adicionar evento de fechar
-        const closeBtn = toast.querySelector('.toast-close');
-        closeBtn.addEventListener('click', () => {
-            toast.remove();
-        });
-
-        // Auto-remover após 5 segundos
-        setTimeout(() => {
+        const closeAction = () => {
             if (toast.parentNode) {
                 toast.remove();
             }
-        }, 5000);
+            // Se uma função 'onclose' foi passada, execute-a.
+            if (onclose) {
+                onclose();
+            }
+        };
+
+        // Adicionar evento de fechar
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.addEventListener('click', closeAction);
+
+        // Auto-remover após 5 segundos
+        setTimeout(closeAction, 5000);
 
         toastContainer.appendChild(toast);
-
-        // Recriar ícones
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
+        lucide.createIcons();
     }
 
     formatDate(dateString) {
@@ -936,9 +946,6 @@ class PontoMaxApp {
                         method: 'POST', body: JSON.stringify({ periodo: actionData.periodo })
                     });
 
-                    // O CÓDIGO VAI PAUSAR AQUI!
-                    debugger;
-
                     console.log("4. A API respondeu com sucesso. Resposta:", response);
                     this.currentFechamento = response.fechamento;
                     this.dadosRevisao = response.dados_revisao;
@@ -970,6 +977,31 @@ class PontoMaxApp {
 
             console.log("7. Renderizando o HTML para o passo:", step);
             pageContainer.innerHTML = this.getFechamentoStepHTML(step);
+            const fechamentoPeriodoSelector = document.getElementById('fechamento-periodo');
+            if (fechamentoPeriodoSelector) {
+                const today = new Date();
+                today.setDate(1); // Garante que estamos no início do mês
+
+                for (let i = 1; i < 13; i++) {
+                    const date = new Date(today);
+                    date.setMonth(today.getMonth() - i);
+
+                    const year = date.getFullYear();
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const value = `${year}-${month}`;
+
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
+
+                    // Define o mês anterior (i=1) como o padrão
+                    if (i === 1) {
+                        option.selected = true;
+                    }
+
+                    fechamentoPeriodoSelector.appendChild(option);
+                }
+            }
             console.log("8. Renderização completa.");
 
         } catch (error) {
@@ -993,7 +1025,7 @@ class PontoMaxApp {
         <div class="step-card">
             <div class="step-header"><i data-lucide="calendar-days"></i><div><h2>Passo 1</h2><p>Selecione o mês/ano de referência.</p></div></div>
             <div class="step-content">
-                <div class="form-group"><label for="fechamento-periodo">Mês/Ano</label><select id="fechamento-periodo" class="form-select"><option value="2025-08">Agosto/2025</option><option value="2025-07">Julho/2025</option></select></div>
+                <div class="form-group"><label for="fechamento-periodo">Mês/Ano</label><select id="fechamento-periodo" class="form-select"></select></div>
                 <div type="button" id="btn-iniciar-fechamento" onclick="window.pontoMaxApp.handleFechamentoAction('iniciar')" class="btn-primary"><i data-lucide="settings-2"></i><span>Avançar</span></div>
             </div>
         </div>`;
@@ -1004,16 +1036,35 @@ class PontoMaxApp {
                 <div class="step-header"><i data-lucide="users"></i><div><h2>Passo 2</h2><p>Revise os saldos do banco de horas e selecione funcionários.</p></div></div>
                 <div class="table-wrapper">
                     <table class="closing-table"><thead><tr><th>Funcionário</th><th>Saldo Mês</th><th>Selecionado</th></tr></thead>
-                    <tbody>${this.dadosRevisao.map(member => `<tr><td>${member.name}</td><td class="${member.balance >= 0 ? 'positive' : 'negative'}">${member.balance >= 0 ? '+' : '-'} ${this.formatHours(Math.abs(member.balance), true)}</td><td><input type="checkbox" class="form-checkbox" checked></td></tr>`).join('')}</tbody>
+                    <tbody>
+                        ${this.dadosRevisao.map(member => `
+                            <tr class="${member.enviado ? 'sent-row' : ''}">
+                                <td>${member.name}</td>
+                                <td class="${member.balance >= 0 ? 'positive' : 'negative'}">
+                                    ${member.balance >= 0 ? '+' : '-'} ${this.formatHours(Math.abs(member.balance), true)}
+                                </td>
+                                <td>
+                                    <input 
+                                        type="checkbox" 
+                                        class="form-checkbox" 
+                                        ${member.enviado ? 'disabled checked' : 'checked'}
+                                    >
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
                     </table>
                 </div>
-                
-                <div class="card-footer single-button">
-                    <div id="btn-gerar-holerites" onclick="window.pontoMaxApp.handleFechamentoAction('gerar')" class="btn-primary" style="cursor: pointer; user-select: none;">
-                        <i data-lucide="file-text"></i><span>Gerar holerites</span>
+                <div class="card-footer">
+                        <button type="button" onclick="window.pontoMaxApp.resetFechamento()" class="btn-outline">
+                            <i data-lucide="arrow-left"></i>
+                            <span>Voltar</span>
+                        </button>
+                        <div id="btn-gerar-holerites" onclick="window.pontoMaxApp.handleFechamentoAction('gerar')" class="btn-primary" style="cursor: pointer; user-select: none;">
+                            <i data-lucide="file-text"></i>
+                            <span>Gerar holerites</span>
+                        </div>
                     </div>
-                </div>
-
             </div>`;
                 break;
             case 3:
@@ -1033,7 +1084,14 @@ class PontoMaxApp {
             case 4:
                 setTimeout(() => { if (this.currentPage === 'fechamento') { this.currentFechamento = null; this.loadFechamentoData(); } }, 5000);
                 contentHTML = `
-        <div class="success-message-container"><i data-lucide="check-circle"></i><h2>Holerites enviados com sucesso!</h2><p>O fluxo será reiniciado em 5 segundos.</p></div>`;
+                <div class="success-message-container">
+                    <i data-lucide="check-circle"></i>
+                    <h2>Holerites enviados com sucesso!</h2>
+                    <p>Esta tela será reiniciada automaticamente.</p>
+                    <div class="countdown-bar-container">
+                        <div class="countdown-bar"></div>
+                    </div>
+                </div>`;
                 break;
         }
         return headerHTML + contentHTML;
@@ -1043,10 +1101,31 @@ class PontoMaxApp {
     async handleFechamentoAction(action) {
         if (action === 'iniciar') {
             const periodo = document.getElementById('fechamento-periodo').value;
-            // Inicia o carregamento com os dados da ação
             await this.loadFechamentoData({ action: 'iniciar', periodo: periodo });
+
+        } else if (action === 'gerar') {
+            // --- NOVA LÓGICA DE VERIFICAÇÃO ADICIONADA AQUI ---
+            // Verifica se a lista de revisão de dados existe e se todos os membros já tiveram o holerite enviado.
+            const allSent = this.dadosRevisao && this.dadosRevisao.every(member => member.enviado);
+
+            if (allSent) {
+                // Se todos já foram enviados, mostra um aviso e interrompe a função.
+                this.showToast(
+                    'Aviso',
+                    'Todos os holerites para este período já foram processados.',
+                    'warning',
+                    // ADICIONADO AQUI: Passa a função de reset como callback.
+                    () => this.resetFechamento()
+                );
+                return; // Impede que o resto do código seja executado
+            }
+            // --- FIM DA NOVA LÓGICA ---
+
+            // Se a verificação passar, a ação normal de gerar holerites continua.
+            await this.loadFechamentoData({ action: action });
+
         } else {
-            // Para 'gerar' e 'enviar', apenas passa a ação
+            // Ação 'enviar' e outras futuras continuam funcionando normalmente.
             await this.loadFechamentoData({ action: action });
         }
     }
