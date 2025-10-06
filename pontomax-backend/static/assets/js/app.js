@@ -325,9 +325,8 @@ class PontoMaxApp {
     async loadRegistrosData() {
         const recordsList = document.getElementById('records-table-body');
         const periodInput = document.getElementById('period-filter');
-        const searchBtn = document.getElementById('search-btn');
 
-        if (!recordsList || !periodInput || !searchBtn) return;
+        if (!recordsList || !periodInput ) return;
 
         // Helper para formatar a data para o formato YYYY-MM-DD
         const formatDateForAPI = (date) => date.toISOString().split('T')[0];
@@ -402,9 +401,6 @@ class PontoMaxApp {
             // Chama a busca assim que o calendário é fechado com uma nova data
             onClose: fetchAndRenderRecords
         });
-
-        // Adiciona o evento de clique ao botão de busca
-        searchBtn.addEventListener('click', fetchAndRenderRecords);
 
         // Carga inicial dos dados
         fetchAndRenderRecords();
@@ -687,7 +683,6 @@ class PontoMaxApp {
                 <div class="card-content">
                     <div class="search-bar">
                         <input type="text" id="team-search-input" class="form-input" placeholder="Buscar por nome">
-                        <button id="team-search-btn" class="btn-primary"><i data-lucide="search"></i><span>Buscar</span></button>
                     </div>
                     <div class="table-wrapper">
                         <table class="team-list-table">
@@ -703,7 +698,6 @@ class PontoMaxApp {
 
             const tableBody = document.getElementById('team-list-body');
             const searchInput = document.getElementById('team-search-input');
-            const searchBtn = document.getElementById('team-search-btn');
             const btnShowRegister = document.getElementById('btn-show-register-modal');
 
             const renderTeamTable = (employeesToRender) => {
@@ -713,19 +707,25 @@ class PontoMaxApp {
                     return;
                 }
                 employeesToRender.forEach(member => {
-                    // Adicionamos valores padrão para os campos que não vêm da API ainda
-                    const workedHours = member.workedHours || 6;
-                    const dailyGoal = member.dailyGoal || 8;
-
-                    const isGoalMet = workedHours >= dailyGoal;
-                    const progressClass = isGoalMet ? 'success' : 'warning';
-                    const row = document.createElement('tr');
                     if (member.profile) {
+                        // ANTES:
+                        // const workedHours = member.workedHours || 6;
+                        // const dailyGoal = member.dailyGoal || 8;
+                        
+                        // DEPOIS (versão dinâmica):
+                        const workedHours = member.horas_trabalhadas_hoje;
+                        const dailyGoal = member.profile.jornada_diaria;
+
+                        const isGoalMet = workedHours >= dailyGoal;
+                        const progressClass = isGoalMet ? 'success' : 'warning';
+                        const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${member.nome}</td> <td>${member.profile.perfil}</td> <td>
+                            <td>${member.nome}</td>
+                            <td>${member.profile.perfil}</td>
+                            <td>
                                 <div class="daily-goal-cell ${progressClass}">
                                     <i data-lucide="clock"></i>
-                                    <span>${workedHours}h / ${dailyGoal}h</span>
+                                    <span>${workedHours.toFixed(1)}h / ${dailyGoal}h</span>
                                 </div>
                             </td>
                             <td><button class="btn-outline" data-employee-id="${member.id}">Ver</button></td>`;
@@ -744,11 +744,10 @@ class PontoMaxApp {
                     renderTeamTable(teamData);
                     return;
                 }
-                const filteredEmployees = teamData.filter(member => member.name.toLowerCase().includes(searchTerm));
+                const filteredEmployees = teamData.filter(member => member.nome.toLowerCase().includes(searchTerm));
                 renderTeamTable(filteredEmployees);
             };
 
-            searchBtn.addEventListener('click', filterAndRender);
             searchInput.addEventListener('keyup', filterAndRender);
 
             tableBody.addEventListener('click', (e) => {
@@ -1085,7 +1084,7 @@ class PontoMaxApp {
             email: document.getElementById('register-email').value,
             password: document.getElementById('register-password').value,
             profile: {
-                perfil: document.getElementById('register-role').value,
+                perfil: 'COLABORADOR',
                 // Lógica igual à da função de ATUALIZAR:
                 salario_base: salarioStr ? parseFloat(salarioStr) : null,
                 horas_mensais: horasStr ? parseInt(horasStr) : null

@@ -3,6 +3,8 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto, Fechamento, HoleriteGerado
+from datetime import date
+from django.utils import timezone
 
 # --- Serializers para o Holerite ---
 # (As classes VencimentoSerializer, DescontoSerializer e HoleriteSerializer continuam as mesmas)
@@ -41,7 +43,7 @@ class HoleriteSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['perfil', 'salario_base', 'horas_mensais']
+        fields = ['perfil', 'salario_base', 'horas_mensais', 'jornada_diaria']
 
 
 # 2. SIMPLIFICAMOS O USERSERIALIZER PARA USAR O PROFILESERIALIZER
@@ -50,16 +52,32 @@ class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer()
     nome = serializers.CharField(source='get_full_name', read_only=True)
     valor_hora = serializers.SerializerMethodField()
+    horas_trabalhadas_hoje = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'password', 'first_name', 'last_name', 'email', 
-            'nome', 'profile', 'valor_hora'
+            'nome', 'profile', 'valor_hora', 'horas_trabalhadas_hoje' 
         ]
         read_only_fields = ['username', 'valor_hora']
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
 
+    def get_horas_trabalhadas_hoje(self, obj):
+        punches_today = RegistroPonto.objects.filter(user=obj, timestamp__date=date.today())
+        
+        if not punches_today.exists() or punches_today.first().tipo != 'entrada':
+            return 0.0
+
+        start_time = punches_today.first().timestamp
+        end_time = timezone.now() # Padrão é o momento atual (se o usuário ainda não saiu)
+        
+        if punches_today.last().tipo == 'saida':
+            end_time = punches_today.last().timestamp
+
+        worked_seconds = (end_time - start_time).total_seconds()
+        return round(worked_seconds / 3600, 1)
+    
     def get_valor_hora(self, obj):
         if hasattr(obj, 'profile'):
             profile = obj.profile
@@ -108,6 +126,8 @@ class UserSerializer(serializers.ModelSerializer):
 
         # Chama o 'super' para salvar as outras alterações (first_name, email, etc.)
         return super().update(instance, validated_data)
+    
+    
 
 class RegistroPontoSerializer(serializers.ModelSerializer):
     time = serializers.DateTimeField(source='timestamp', format='%H:%M', read_only=True)

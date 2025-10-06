@@ -21,6 +21,8 @@ class Profile(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     horas_mensais = models.PositiveIntegerField(null=True, blank=True)
+    jornada_diaria = models.PositiveIntegerField(default=8, help_text="Jornada diária em horas")
+    
     def __str__(self):
         return f"{self.user.username} - {self.perfil}"
     

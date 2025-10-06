@@ -422,3 +422,8 @@
     font-size: 0.875rem;
 }
 
+input[readonly] {
+    background-color: #f3f4f6; /* Um cinza claro */
+    cursor: not-allowed;
+    opacity: 0.7;
+}

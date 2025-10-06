@@ -132,8 +132,7 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Garante que o gestor não se veja na sua própria lista de equipe
-        return self.queryset.exclude(pk=self.request.user.pk)
+        return self.queryset.exclude(pk=self.request.user.pk).exclude(is_superuser=True)
     
 class RegistroPontoViewSet(viewsets.ModelViewSet):
     """
@@ -244,7 +243,7 @@ class BancoHorasEquipeView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        equipe = User.objects.exclude(pk=self.request.user.pk)
+        equipe = User.objects.exclude(pk=self.request.user.pk).exclude(is_superuser=True)
         
         # Pega o mês e ano atuais para o cálculo mensal
         hoje = date.today()

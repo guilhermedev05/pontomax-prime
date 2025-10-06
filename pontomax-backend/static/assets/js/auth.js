@@ -55,12 +55,20 @@ class AuthManager {
 
 
     logout() {
+        // 1. Limpa o estado da aplicação
         this.currentUser = null;
         this.isAuthenticated = false;
-        localStorage.removeItem('pontomax_user');
 
-        // Redirecionar para login
-        this.showLoginPage();
+        // 2. Limpa TODOS os dados do localStorage para garantir um logout completo
+        localStorage.removeItem('pontomax_user');
+        localStorage.removeItem('pontomax_access_token');
+        localStorage.removeItem('pontomax_refresh_token');
+
+        // 3. Força o recarregamento da página.
+        // Isso garante que todo o estado antigo será destruído.
+        // Ao recarregar, o app vai verificar o localStorage, não vai achar
+        // ninguém logado e vai exibir a tela de login corretamente.
+        window.location.reload();
     }
 
     getCurrentUser() {
