@@ -1450,20 +1450,31 @@ class PontoMaxApp {
         });
     }
 
-    loadAdminSubPage(subPage) {
+    loadAdminSubPage(subPage, id = null) {
         const contentContainer = document.getElementById('admin-main-content');
         if (!contentContainer) return;
 
-        switch (subPage) {
+        switch(subPage) {
             case 'users':
+                // (Aqui podemos adicionar uma lógica de detalhe/lista para usuários no futuro)
                 this.renderAdminUserTable(contentContainer);
                 break;
+            
             case 'fechamentos':
-                this.renderAdminFechamentoTable(contentContainer);
+                if (id) {
+                    // Se um ID for passado, renderiza a tela de detalhes
+                    this.renderFechamentoDetailView(contentContainer, id);
+                } else {
+                    // Senão, renderiza a lista principal
+                    this.renderAdminFechamentoTable(contentContainer);
+                }
                 break;
+
             case 'registros':
+                // (Aqui podemos adicionar uma lógica de detalhe/lista para registros no futuro)
                 this.renderAdminRegistrosTable(contentContainer);
                 break;
+                
             default:
                 contentContainer.innerHTML = '<h2>Página não encontrada</h2>';
         }
@@ -1546,6 +1557,9 @@ class PontoMaxApp {
                                     <td><span class="status-badge">${fechamento.status}</span></td>
                                     <td>${this.formatDate(fechamento.data_criacao)}</td>
                                     <td>
+                                        <button class="btn-outline" data-fechamento-id="${fechamento.id}">
+                                            <i data-lucide="eye"></i> Detalhes
+                                        </button>
                                         <button class="btn-danger" data-fechamento-id="${fechamento.id}">
                                             <i data-lucide="trash-2"></i>
                                         </button>
@@ -1560,10 +1574,15 @@ class PontoMaxApp {
             lucide.createIcons();
 
             // 3. Adiciona o evento de clique para os botões de deletar
-            container.querySelectorAll('.btn-danger').forEach(button => {
+            container.querySelectorAll('button[data-fechamento-id]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const fechamentoId = e.currentTarget.dataset.fechamentoId;
-                    this.handleDeleteFechamento(fechamentoId);
+                    if (e.currentTarget.classList.contains('btn-danger')) {
+                        this.handleDeleteFechamento(fechamentoId);
+                    } else {
+                        // Chama a nova função de navegação para a página de detalhes
+                        this.loadAdminSubPage('fechamentos', fechamentoId);
+                    }
                 });
             });
 
@@ -1702,6 +1721,62 @@ class PontoMaxApp {
             this.loadAdminSubPage('registros'); // Recarrega a tabela
         } catch (error) {
             this.showToast('Erro', 'Não foi possível atualizar o registro.', 'error');
+        }
+    }
+
+    async renderFechamentoDetailView(container, fechamentoId) {
+        try {
+            const fechamento = await window.authManager.apiCall(`/admin/fechamentos/${fechamentoId}/`);
+            
+            let detailHTML = `
+            <div class="main-card">
+                <div class="card-header-flex">
+                    <div>
+                        <h2>Detalhes do Fechamento: ${fechamento.periodo}</h2>
+                        <p>Status: ${fechamento.status}</p>
+                    </div>
+                    <button class="btn-outline" id="back-to-fechamentos-list">
+                        <i data-lucide="arrow-left"></i> Voltar para a lista
+                    </button>
+                </div>
+                <div class="card-content">
+                    <h3>Holerites Gerados neste Período</h3>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Funcionário</th>
+                                    <th>Salário Bruto</th>
+                                    <th>Total Descontos</th>
+                                    <th>Salário Líquido</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${fechamento.holerites_gerados.map(holerite => `
+                                    <tr>
+                                        <td>${holerite.userName}</td>
+                                        <td>${this.formatCurrency(parseFloat(holerite.salario_bruto))}</td>
+                                        <td>${this.formatCurrency(parseFloat(holerite.total_descontos))}</td>
+                                        <td><strong>${this.formatCurrency(parseFloat(holerite.salario_liquido))}</strong></td>
+                                        <td>${holerite.enviado ? 'Enviado' : 'Não Enviado'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+            container.innerHTML = detailHTML;
+            lucide.createIcons();
+
+            // Adiciona evento ao botão "Voltar"
+            container.querySelector('#back-to-fechamentos-list').addEventListener('click', () => {
+                this.loadAdminSubPage('fechamentos');
+            });
+
+        } catch (error) {
+            container.innerHTML = '<h2>Erro ao carregar detalhes do fechamento.</h2>';
         }
     }
 }
