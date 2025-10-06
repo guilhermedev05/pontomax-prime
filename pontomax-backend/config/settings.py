@@ -12,6 +12,16 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+
+GTK_FOLDER = r'C:\msys64\mingw64\bin' 
+
+# Pega o PATH atual do sistema
+path_atual = os.environ.get('PATH', '')
+
+# Adiciona a pasta do GTK ao início do PATH (apenas para este processo em execução)
+if GTK_FOLDER not in path_atual:
+    os.environ['PATH'] = GTK_FOLDER + os.pathsep + path_atual
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 

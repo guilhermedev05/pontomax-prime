@@ -88,11 +88,15 @@ class PontoMaxApp {
             loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         }
 
-        // Navegação
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => this.handleNavigation(e));
-        });
+        const mainApp = document.getElementById('main-app');
+        if (mainApp) {
+            mainApp.addEventListener('click', (e) => {
+                const navItem = e.target.closest('.nav-item[data-page]');
+                if (navItem) {
+                    this.handleNavigation(e, navItem);
+                }
+            });
+        }
 
         // Menu do usuário
         const userMenuTrigger = document.getElementById('user-menu-trigger');
@@ -291,9 +295,9 @@ class PontoMaxApp {
         window.authManager.logout();
     }
 
-    handleNavigation(e) {
+    handleNavigation(e, navItem) {
         e.preventDefault();
-        const page = e.currentTarget.getAttribute('data-page');
+        const page = navItem.getAttribute('data-page');
         if (page) {
             this.navigateToPage(page);
         }
@@ -301,6 +305,9 @@ class PontoMaxApp {
 
     // No seu arquivo assets/js/app.js, substitua esta função:
     navigateToPage(page) {
+        // --- ADICIONE ESTA LINHA DE DEPURAÇÃO ---
+        console.log('--- NAVEGANDO PARA A PÁGINA:', page, '---');
+        // -----------------------------------------
         // 1. VERIFICA PERMISSÃO (JÁ EXISTENTE)
         if (!window.authManager.hasPermission(page)) {
             this.showToast('Erro', 'Você não tem permissão para acessar esta página', 'error');
@@ -388,11 +395,26 @@ class PontoMaxApp {
     }
 
     async loadRegistrosData() {
+        console.log("--- Iniciando loadRegistrosData ---");
+
         const recordsList = document.getElementById('records-table-body');
         const periodInput = document.getElementById('period-filter');
+        const searchBtn = document.getElementById('search-btn');
         const downloadBtn = document.getElementById('btn-download-pdf');
 
-        if (!recordsList || !periodInput) return;
+        // --- TESTE DE ELEMENTOS ---
+        console.log("Verificando elementos da página 'Meus Registros':");
+        console.log("Elemento #records-table-body encontrado?", !!recordsList);
+        console.log("Elemento #period-filter encontrado?", !!periodInput);
+        console.log("Elemento #search-btn encontrado?", !!searchBtn);
+        // --- FIM DO TESTE ---
+
+        if (!recordsList || !periodInput || !searchBtn) {
+            console.error("ERRO: Um ou mais elementos essenciais da página não foram encontrados. A função será interrompida.");
+            return; // <-- O PONTO DA FALHA
+        }
+
+        console.log("Todos os elementos essenciais foram encontrados. Continuando a execução...");
 
         // Helper para formatar a data para o formato YYYY-MM-DD
         const formatDateForAPI = (date) => date.toISOString().split('T')[0];
@@ -434,20 +456,58 @@ class PontoMaxApp {
             document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
         };
 
+        // --- LÓGICA DE DEPURAÇÃO ADICIONADA AQUI ---
         if (downloadBtn) {
-            downloadBtn.addEventListener('click', () => {
-                const dates = fp.selectedDates; // 'fp' é a instância do flatpickr
-                if (dates.length < 2) {
-                    this.showToast('Aviso', 'Selecione um intervalo de datas para gerar o relatório.', 'warning');
-                    return;
+            downloadBtn.addEventListener('click', async () => { // 1. Tornamos a função 'async'
+                try {
+                    const dates = fp.selectedDates;
+                    if (dates.length < 2) {
+                        this.showToast('Aviso', 'Selecione um intervalo de datas para gerar o relatório.', 'warning');
+                        return;
+                    }
+
+                    this.showToast('Aguarde', 'Gerando seu relatório em PDF...', 'info');
+
+                    const formatDateForAPI = (date) => date.toISOString().split('T')[0];
+                    const startDateStr = formatDateForAPI(dates[0]);
+                    const endDateStr = formatDateForAPI(dates[1]);
+                    const urlPath = `/registros/exportar_pdf/?start_date=${startDateStr}&end_date=${endDateStr}`;
+
+                    // 2. Usamos nossa função 'apiCall' para fazer a requisição autenticada
+                    const response = await window.authManager.apiCall(urlPath);
+
+                    if (!response.ok) {
+                        throw new Error('Falha ao gerar o relatório no servidor.');
+                    }
+
+                    // 3. Pegamos os dados do arquivo (Blob) e o nome do arquivo do cabeçalho
+                    const blob = await response.blob();
+                    const disposition = response.headers.get('content-disposition');
+                    let filename = `relatorio_ponto_${startDateStr}.pdf`; // Nome padrão
+                    if (disposition && disposition.includes('attachment')) {
+                        const filenameMatch = disposition.match(/filename="(.+)"/);
+                        if (filenameMatch.length > 1) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+
+                    // 4. Criamos um link temporário na memória e clicamos nele para iniciar o download
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+
+                    // 5. Limpamos o link da memória
+                    window.URL.revokeObjectURL(downloadUrl);
+                    a.remove();
+
+                } catch (error) {
+                    console.error("Erro ao baixar PDF:", error);
+                    this.showToast('Erro', 'Não foi possível baixar o relatório.', 'error');
                 }
-
-                const formatDateForAPI = (date) => date.toISOString().split('T')[0];
-                const startDateStr = formatDateForAPI(dates[0]);
-                const endDateStr = formatDateForAPI(dates[1]);
-
-                const url = `/api/registros/exportar_pdf/?start_date=${startDateStr}&end_date=${endDateStr}`;
-                window.open(url, '_blank');
             });
         }
 
@@ -1382,8 +1442,9 @@ class PontoMaxApp {
     setupHoleritePage() {
         const periodSelector = document.getElementById('payslip-period');
         const viewButton = document.getElementById('btn-view-payslip');
+        const downloadButton = document.getElementById('btn-download-payslip');
 
-        if (!periodSelector || !viewButton) return;
+        if (!periodSelector || !viewButton || !downloadButton) return;
 
         // Limpa opções antigas
         periodSelector.innerHTML = '';
@@ -1414,6 +1475,46 @@ class PontoMaxApp {
 
         // Anexa o evento de clique ao botão, que chamará a função para carregar os dados
         viewButton.onclick = () => this.loadHoleriteData();
+
+        downloadButton.addEventListener('click', async () => {
+            try {
+                const selectedPeriod = periodSelector.value;
+                if (!selectedPeriod) {
+                    this.showToast('Aviso', 'Selecione um período para gerar o PDF.', 'warning');
+                    return;
+                }
+
+                this.showToast('Aguarde', 'Gerando seu holerite em PDF...', 'info');
+
+                const urlPath = `/holerites/exportar_pdf/?periodo=${selectedPeriod}`;
+                const response = await window.authManager.apiCall(urlPath);
+
+                if (!response.ok) throw new Error('Falha ao gerar o PDF.');
+
+                const blob = await response.blob();
+                const disposition = response.headers.get('content-disposition');
+                let filename = `holerite_${selectedPeriod}.pdf`;
+                if (disposition && disposition.includes('attachment')) {
+                    const filenameMatch = disposition.match(/filename="(.+)"/);
+                    if (filenameMatch.length > 1) filename = filenameMatch[1];
+                }
+
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = downloadUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+
+                window.URL.revokeObjectURL(downloadUrl);
+                a.remove();
+
+            } catch (error) {
+                console.error("Erro ao baixar PDF do holerite:", error);
+                this.showToast('Erro', 'Não foi possível baixar o holerite. Verifique se ele já foi visualizado na tela.', 'error');
+            }
+        });
 
         // Garante que o estado inicial da página está limpo
         document.getElementById('payslip-content-wrapper').classList.add('hidden');
@@ -1472,12 +1573,12 @@ class PontoMaxApp {
         const contentContainer = document.getElementById('admin-main-content');
         if (!contentContainer) return;
 
-        switch(subPage) {
+        switch (subPage) {
             case 'users':
                 // (Aqui podemos adicionar uma lógica de detalhe/lista para usuários no futuro)
                 this.renderAdminUserTable(contentContainer);
                 break;
-            
+
             case 'fechamentos':
                 if (id) {
                     // Se um ID for passado, renderiza a tela de detalhes
@@ -1492,7 +1593,7 @@ class PontoMaxApp {
                 // (Aqui podemos adicionar uma lógica de detalhe/lista para registros no futuro)
                 this.renderAdminRegistrosTable(contentContainer);
                 break;
-                
+
             default:
                 contentContainer.innerHTML = '<h2>Página não encontrada</h2>';
         }
@@ -1745,7 +1846,7 @@ class PontoMaxApp {
     async renderFechamentoDetailView(container, fechamentoId) {
         try {
             const fechamento = await window.authManager.apiCall(`/admin/fechamentos/${fechamentoId}/`);
-            
+
             let detailHTML = `
             <div class="main-card">
                 <div class="card-header-flex">

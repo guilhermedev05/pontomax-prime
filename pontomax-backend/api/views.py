@@ -25,6 +25,9 @@ from .permissions import IsAdminUser
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from weasyprint import HTML
+import base64
+from django.conf import settings
+import os
 
 def calcular_saldo_banco_horas(user):
     """
@@ -555,11 +558,22 @@ class GerarRelatorioPontoPDF(APIView):
         # (Lógica similar para overtime e debit)
         h_tw, m_tw = divmod(total_worked_mins, 60)
 
+        logo_base64 = ''
+        try:
+            # Constrói o caminho para o arquivo da logo na sua pasta 'static'
+            logo_path = os.path.join(settings.STATICFILES_DIRS[0], 'assets/images/logo.svg')
+            with open(logo_path, 'rb') as logo_file:
+                logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+        except (FileNotFoundError, IndexError):
+            print("AVISO: Arquivo de logo não encontrado ou STATICFILES_DIRS não configurado.")
+            # O PDF será gerado sem a logo se não for encontrada
+
         context = {
             'user_name': request.user.get_full_name(),
             'periodo': f'{start_date.strftime("%d/%m/%Y")} a {end_date.strftime("%d/%m/%Y")}',
             'registros': daily_summaries,
-            'totais': { 'worked': f'{h_tw:02d}h {m_tw:02d}m', 'overtime': '...', 'debit': '...' } # Simplificado
+            'totais': { 'worked': f'{h_tw:02d}h {m_tw:02d}m', 'overtime': '...', 'debit': '...' }, # Simplificado
+            'logo_data_uri': f'data:image/svg+xml;base64,{logo_base64}' # <-- Nova variável para o template
         }
         
         # Renderiza o HTML e cria o PDF
@@ -569,5 +583,56 @@ class GerarRelatorioPontoPDF(APIView):
         # Cria a resposta HTTP
         response = HttpResponse(pdf_file, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="relatorio_ponto_{request.user.username}_{start_date_str}.pdf"'
+        
+        return response
+
+class GerarHoleritePDF(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        periodo = request.query_params.get('periodo')
+        if not periodo:
+            return Response({'error': 'O parâmetro "periodo" é obrigatório.'}, status=400)
+
+        try:
+            # Busca o holerite para o usuário e período especificados
+            holerite = Holerite.objects.get(user=request.user, periodo=periodo)
+        except Holerite.DoesNotExist:
+            return Response({'error': 'Nenhum holerite encontrado para este período.'}, status=404)
+
+        # Usamos o serializer para formatar os dados, assim como na view normal
+        serializer = HoleriteSerializer(holerite)
+        holerite_data = serializer.data
+
+        # Calcula os totais
+        total_bruto = sum(Decimal(v['valor']) for v in holerite_data['vencimentos'])
+        total_descontos = sum(Decimal(d['valor']) for d in holerite_data['descontos'])
+        total_liquido = total_bruto - total_descontos
+
+        # Lógica para embutir a logo (reaproveitada)
+        logo_base64 = ''
+        try:
+            logo_path = os.path.join(settings.STATICFILES_DIRS[0], 'assets/images/logo.svg')
+            with open(logo_path, 'rb') as logo_file:
+                logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+        except (FileNotFoundError, IndexError):
+            print("AVISO: Arquivo de logo não encontrado.")
+
+        context = {
+            'holerite': holerite_data,
+            'totais': {
+                'bruto': f'R$ {total_bruto:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.'),
+                'descontos': f'R$ {total_descontos:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.'),
+                'liquido': f'R$ {total_liquido:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+            },
+            'logo_data_uri': f'data:image/svg+xml;base64,{logo_base64}'
+        }
+
+        # Renderiza o HTML, cria o PDF e retorna a resposta
+        html_string = render_to_string('reports/holerite_pdf.html', context)
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
+
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="holerite_{request.user.username}_{periodo}.pdf"'
         
         return response

@@ -1,56 +1,138 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-A">
+    <meta charset="UTF-8">
     <title>Relatório de Ponto</title>
     <style>
-        @page { size: A4; margin: 1.5cm; }
-        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10pt; color: #333; }
-        h1 { color: #1C3EC5; font-size: 18pt; text-align: center; margin-bottom: 0; }
-        h2 { font-size: 14pt; text-align: center; margin-top: 0; margin-bottom: 20px; color: #666; }
-        p { margin: 5px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        .total-row { background-color: #f2f2f2; font-weight: bold; }
+        /*
+         * ESTILOS UNIFICADOS - Baseado no holerite_pdf.html que funcionou
+         */
+        @page {
+            size: A4;
+            margin: 2cm 1.5cm; /* Margem padrão */
+            
+            /* Mantemos o rodapé com número de página, pois ele funciona bem */
+            @bottom-right {
+                content: "Página " counter(page);
+                font-size: 9pt;
+                color: #888;
+            }
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+
+        /* --- ESTILO DO CABEÇALHO COPIADO DO holerite_pdf.html --- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #1C3EC5;
+            padding-bottom: 10px;
+            margin-bottom: 25px; /* Aumenta o espaço após o cabeçalho */
+        }
+        
+        #logo {
+            width: 50px;
+            height: 50px;
+        }
+        
+        #header-text {
+            text-align: right;
+        }
+
+        #header-text h1 {
+            margin: 0;
+            font-size: 18pt;
+            color: #1C3EC5;
+        }
+
+        #header-text p {
+            margin: 0;
+            font-size: 11pt;
+            color: #555;
+        }
+        
+        /* --- ESTILOS DO RESTO DO DOCUMENTO --- */
+        #user-info {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            margin-bottom: 25px;
+        }
+        #user-info p { margin: 5px 0; }
+        
+        #report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        #report-table th, 
+        #report-table td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        #report-table thead th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
+        #report-table tbody tr:nth-child(even) { background-color: #f9f9f9; }
+        #report-table tfoot .total-row td { background-color: #e0e0e0; font-weight: bold; }
         .positive { color: #10b981; }
         .negative { color: #ef4444; }
     </style>
 </head>
 <body>
-    <h1>PontoMax</h1>
-    <h2>Relatório de Ponto do Colaborador</h2>
+    <div class="header">
+        <img id="logo" src="{{ logo_data_uri }}">
+        <div id="header-text">
+            <h1>PontoMax</h1>
+            <p>Relatório de Ponto Individual</p>
+        </div>
+    </div>
 
-    <p><strong>Funcionário:</strong> {{ user_name }}</p>
-    <p><strong>Período:</strong> {{ periodo }}</p>
+    <main>
+        <div id="user-info">
+            <p><strong>Funcionário:</strong> {{ user_name }}</p>
+            <p><strong>Período:</strong> {{ periodo }}</p>
+        </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Total Trabalhado</th>
-                <th>Horas Extras</th>
-                <th>Débito</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for registro in registros %}
-            <tr>
-                <td>{{ registro.date|date:"d/m/Y" }}</td>
-                <td>{{ registro.worked_formatted }}</td>
-                <td class="positive">{{ registro.overtime_formatted }}</td>
-                <td class="negative">{{ registro.debit_formatted }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td><strong>TOTAL</strong></td>
-                <td><strong>{{ totais.worked }}</strong></td>
-                <td class="positive"><strong>{{ totais.overtime }}</strong></td>
-                <td class="negative"><strong>{{ totais.debit }}</strong></td>
-            </tr>
-        </tfoot>
-    </table>
+        <table id="report-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Total Trabalhado</th>
+                    <th>Horas Extras</th>
+                    <th>Débito</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if not registros %}
+                <tr>
+                    <td colspan="4" style="text-align: center;">Nenhum registro de ponto encontrado para este período.</td>
+                </tr>
+                {% endif %}
+                {% for registro in registros %}
+                <tr>
+                    <td>{{ registro.date|date:"d/m/Y" }}</td>
+                    <td style="text-align: center;">{{ registro.worked_formatted }}</td>
+                    <td class="positive" style="text-align: center;">{{ registro.overtime_formatted }}</td>
+                    <td class="negative" style="text-align: center;">{{ registro.debit_formatted }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td><strong>TOTAL</strong></td>
+                    <td style="text-align: center;"><strong>{{ totais.worked }}</strong></td>
+                    <td class="positive" style="text-align: center;"><strong>{{ totais.overtime }}</strong></td>
+                    <td class="negative" style="text-align: center;"><strong>{{ totais.debit }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </main>
 </body>
 </html>

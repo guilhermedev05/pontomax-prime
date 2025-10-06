@@ -177,19 +177,16 @@ class DashboardManager {
 
     updatePunchButton() {
         const punchBtn = document.getElementById('punch-btn');
-        const btnText = punchBtn.querySelector('span');
-        const btnIcon = punchBtn.querySelector('i');
-        if (!punchBtn || !btnText) return;
+        if (!punchBtn) return; // Guarda de segurança caso o botão não esteja na página
 
         const todayRecord = this.getTodayRecord();
         let nextAction = 'entrada';
 
         if (todayRecord && todayRecord.entries.length > 0) {
             const lastEntryType = todayRecord.entries[todayRecord.entries.length - 1].type;
-            // Se o último foi entrada, o próximo é saída. Senão, é uma nova entrada.
             nextAction = (lastEntryType === 'entrada') ? 'saida' : 'entrada_novo_dia';
         }
-        
+
         const buttonStates = {
             'entrada': { text: 'Registrar Entrada', icon: 'log-in' },
             'saida': { text: 'Registrar Saída', icon: 'log-out' },
@@ -197,10 +194,17 @@ class DashboardManager {
         };
 
         const state = buttonStates[nextAction];
-        punchBtn.disabled = (nextAction === 'entrada_novo_dia' && todayRecord.entries.some(e => e.type === 'saida'));
-        
-        btnText.textContent = state.text;
-        btnIcon.setAttribute('data-lucide', state.icon);
+
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Recriamos o conteúdo do botão para garantir que a tag <i> sempre exista
+        punchBtn.innerHTML = `
+            <i data-lucide="${state.icon}"></i>
+            <span>${state.text}</span>
+        `;
+
+        // Desabilita o botão se o dia já foi finalizado
+        punchBtn.disabled = (nextAction === 'entrada_novo_dia' && todayRecord && todayRecord.entries.some(e => e.type === 'saida'));
+
         lucide.createIcons(); // Recria o ícone
     }
 

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Holerite - {{ periodo }}</title>
+    <style>
+        @page { size: A4; margin: 2cm; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10pt; color: #333; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1C3EC5; padding-bottom: 10px; margin-bottom: 20px; }
+        #logo { width: 50px; height: 50px; }
+        #header-text { text-align: right; }
+        #header-text h1 { margin: 0; font-size: 18pt; color: #1C3EC5; }
+        #header-text p { margin: 0; font-size: 11pt; color: #555; }
+        #user-info { margin-bottom: 25px; line-height: 1.5; }
+        .payslip-section { margin-bottom: 20px; }
+        .section-header { background-color: #f0f0f0; padding: 8px; font-weight: bold; border: 1px solid #ccc; border-bottom: none; }
+        .section-content { border: 1px solid #ccc; padding: 10px; }
+        .line-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #eee; }
+        .line-item:last-child { border-bottom: none; }
+        .section-total, .net-summary { display: flex; justify-content: space-between; font-weight: bold; padding: 10px; border: 1px solid #ccc; border-top: 1px solid #333; }
+        .net-summary { background-color: #e0e0e0; margin-top: 20px; font-size: 12pt; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img id="logo" src="{{ logo_data_uri }}">
+        <div id="header-text">
+            <h1>PontoMax</h1>
+            <p>Demonstrativo de Pagamento</p>
+        </div>
+    </div>
+
+    <div id="user-info">
+        <p><strong>Funcionário:</strong> {{ holerite.userInfo }}</p>
+        <p><strong>Período de Referência:</strong> {{ holerite.periodLabel }}</p>
+    </div>
+
+    <div class="payslip-section">
+        <div class="section-header">Remunerações</div>
+        <div class="section-content">
+            {% for item in holerite.vencimentos %}
+            <div class="line-item">
+                <span>{{ item.descricao }}{% if item.detalhes %} ({{ item.detalhes }}){% endif %}</span>
+                <span>{{ item.valor|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="section-total">
+            <span>Total Bruto</span>
+            <span class="positive">{{ totais.bruto }}</span>
+        </div>
+    </div>
+
+    <div class="payslip-section">
+        <div class="section-header">Descontos</div>
+        <div class="section-content">
+            {% for item in holerite.descontos %}
+            <div class="line-item">
+                <span>{{ item.descricao }}{% if item.detalhes %} ({{ item.detalhes }}){% endif %}</span>
+                <span class="negative">-{{ item.valor|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="section-total">
+            <span>Total Descontos</span>
+            <span class="negative">{{ totais.descontos }}</span>
+        </div>
+    </div>
+
+    <div class="net-summary">
+        <span>VALOR LÍQUIDO</span>
+        <span>{{ totais.liquido }}</span>
+    </div>
+</body>
+</html>
