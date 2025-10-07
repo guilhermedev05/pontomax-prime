@@ -28,6 +28,8 @@ from weasyprint import HTML
 import base64
 from django.conf import settings
 import os
+from .models import Justificativa
+from .serializers import JustificativaSerializer
 
 def calcular_saldo_banco_horas(user):
     """
@@ -636,3 +638,51 @@ class GerarHoleritePDF(APIView):
         response['Content-Disposition'] = f'attachment; filename="holerite_{request.user.username}_{periodo}.pdf"'
         
         return response
+
+class JustificativaViewSet(viewsets.ModelViewSet):
+    serializer_class = JustificativaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Filtra as justificativas:
+        - Colaborador vê apenas as suas.
+        - Gestor vê as de sua equipe.
+        - Admin vê todas.
+        """
+        user = self.request.user
+        if user.profile.perfil == 'COLABORADOR':
+            return Justificativa.objects.filter(user=user)
+        elif user.profile.perfil == 'GESTOR':
+            # Assumindo que a equipe do gestor são todos os não-gestores/não-admins
+            equipe_ids = User.objects.filter(profile__perfil='COLABORADOR').values_list('id', flat=True)
+            return Justificativa.objects.filter(user__id__in=equipe_ids)
+        
+        # Admin vê tudo
+        return Justificativa.objects.all()
+
+    def perform_create(self, serializer):
+        """ Garante que a justificativa seja criada para o usuário logado. """
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated]) # Adicionar permissão de gestor aqui seria ideal no futuro
+    def resolver(self, request, pk=None):
+        """ Ação para um gestor aprovar ou rejeitar uma justificativa. """
+        justificativa = self.get_object()
+        
+        # Validação simples de permissão
+        if request.user.profile.perfil not in ['GESTOR', 'ADMIN']:
+            return Response({'error': 'Apenas gestores ou admins podem resolver justificativas.'}, status=status.HTTP_403_FORBIDDEN)
+
+        novo_status = request.data.get('status')
+        if novo_status not in ['APROVADO', 'REJEITADO']:
+            return Response({'error': 'Status inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        justificativa.status = novo_status
+        justificativa.gestor_responsavel = request.user
+        justificativa.data_resolucao = timezone.now()
+        justificativa.save()
+
+        # TODO: Futuramente, aqui será o gatilho para enviar uma notificação ao colaborador.
+
+        return Response(self.get_serializer(justificativa).data)

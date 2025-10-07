@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, RegistrosView, UserProfileView,
     UserViewSet, RegistroPontoViewSet, FechamentoViewSet,
-    AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet, GerarRelatorioPontoPDF, GerarHoleritePDF  # Adicione os imports do Admin
+    AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet, GerarRelatorioPontoPDF, GerarHoleritePDF, JustificativaViewSet  # Adicione os imports do Admin
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -16,6 +16,7 @@ router = DefaultRouter()
 router.register(r'equipe', UserViewSet, basename='equipe')
 router.register(r'registros-ponto', RegistroPontoViewSet, basename='registro-ponto')
 router.register(r'fechamentos', FechamentoViewSet, basename='fechamento')
+router.register(r'justificativas', JustificativaViewSet, basename='justificativa')
 
 # --- Router do Admin ---
 admin_router = DefaultRouter()

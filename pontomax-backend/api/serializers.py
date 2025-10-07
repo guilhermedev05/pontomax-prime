@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto, Fechamento, HoleriteGerado
 from datetime import date
 from django.utils import timezone
+from .models import Justificativa
 
 # --- Serializers para o Holerite ---
 # (As classes VencimentoSerializer, DescontoSerializer e HoleriteSerializer continuam as mesmas)
@@ -220,3 +221,11 @@ class AdminRegistroPontoSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'user_name', 'timestamp', 'tipo']
         # Definimos explicitamente que o 'user' não pode ser alterado via API
         read_only_fields = ['user', 'user_name']
+
+class JustificativaSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+
+    class Meta:
+        model = Justificativa
+        fields = ['id', 'user', 'user_name', 'data_ocorrencia', 'motivo', 'status', 'data_criacao']
+        read_only_fields = ['user', 'status', 'data_criacao'] # O usuário só pode definir a data e o motivo na criação

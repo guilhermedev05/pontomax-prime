@@ -126,3 +126,27 @@ class DescontoGerado(models.Model):
 
     def __str__(self):
         return f"Desconto: {self.descricao} - R$ {self.valor}"
+
+class Justificativa(models.Model):
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('APROVADO', 'Aprovado'),
+        ('REJEITADO', 'Rejeitado'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='justificativas')
+    data_ocorrencia = models.DateField(verbose_name="Data da Ocorrência")
+    motivo = models.TextField(verbose_name="Motivo da Justificativa")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    
+    # Campos de auditoria
+    gestor_responsavel = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='justificativas_resolvidas')
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_resolucao = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-data_criacao']
+        unique_together = ('user', 'data_ocorrencia') # Impede duplicatas para o mesmo dia
+
+    def __str__(self):
+        return f"Justificativa de {self.user.username} para {self.data_ocorrencia.strftime('%d/%m/%Y')}"
