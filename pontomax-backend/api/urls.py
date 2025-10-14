@@ -2,7 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, NotificacaoViewSet, RegistrosView, UserProfileView,
+    AdminDashboardView, BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, NotificacaoViewSet, RegistrosView, UserProfileView,
     UserViewSet, RegistroPontoViewSet, FechamentoViewSet,
     AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet, GerarRelatorioPontoPDF, GerarHoleritePDF, JustificativaViewSet  # Adicione os imports do Admin
 )
@@ -39,6 +39,7 @@ urlpatterns = [
     path('dashboard-gestor/', GestorDashboardView.as_view(), name='dashboard-gestor'), # <-- A ROTA QUE ESTAVA FALTANDO
     path('registros/exportar_pdf/', GerarRelatorioPontoPDF.as_view(), name='relatorio_pdf'),
     path('holerites/exportar_pdf/', GerarHoleritePDF.as_view(), name='holerite_pdf'),
+    path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
     # Novas rotas do painel de admin
     path('admin/', include(admin_router.urls)),
     

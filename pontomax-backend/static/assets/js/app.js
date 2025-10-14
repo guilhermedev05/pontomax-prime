@@ -1532,38 +1532,39 @@ class PontoMaxApp {
         const pageContainer = document.getElementById('admin-page');
         if (!pageContainer) return;
 
-        // Este é o layout base do nosso painel de admin
         pageContainer.innerHTML = `
-        <div class="page-header">
-            <h1>Painel Administrativo</h1>
-            <p>Gerenciamento completo do sistema PontoMax.</p>
-        </div>
-        <div class="admin-layout">
-            <aside class="admin-sidebar">
-                <nav class="admin-nav">
-                    <a href="#admin/users" class="admin-nav-item active" data-admin-page="users">
-                        <i data-lucide="users"></i>
-                        <span>Usuários</span>
-                    </a>
-                    <a href="#admin/fechamentos" class="admin-nav-item" data-admin-page="fechamentos">
-                        <i data-lucide="calendar-check"></i>
-                        <span>Fechamentos</span>
-                    </a>
-                    <a href="#admin/registros" class="admin-nav-item" data-admin-page="registros">
-                        <i data-lucide="history"></i>
-                        <span>Registros de Ponto</span>
-                    </a>
-                </nav>
-            </aside>
-            <main id="admin-main-content" class="admin-main-content">
-
-            </main>
-        </div>
-    `;
+            <div class="page-header">
+                <h1>Painel Administrativo</h1>
+                <p>Gerenciamento completo do sistema PontoMax.</p>
+            </div>
+            <div class="admin-layout">
+                <aside class="admin-sidebar">
+                    <nav class="admin-nav">
+                        <a href="#admin/dashboard" class="admin-nav-item active" data-admin-page="dashboard">
+                            <i data-lucide="bar-chart-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="#admin/users" class="admin-nav-item" data-admin-page="users">
+                            <i data-lucide="users"></i>
+                            <span>Usuários</span>
+                        </a>
+                        <a href="#admin/fechamentos" class="admin-nav-item" data-admin-page="fechamentos">
+                            <i data-lucide="calendar-check"></i>
+                            <span>Fechamentos</span>
+                        </a>
+                        <a href="#admin/registros" class="admin-nav-item" data-admin-page="registros">
+                            <i data-lucide="history"></i>
+                            <span>Registros de Ponto</span>
+                        </a>
+                    </nav>
+                </aside>
+                <main id="admin-main-content" class="admin-main-content"></main>
+            </div>
+        `;
         lucide.createIcons();
 
-        // Carrega a primeira sub-página por padrão (Usuários)
-        this.loadAdminSubPage('users');
+        // 2. Carrega a sub-página 'dashboard' por padrão
+        this.loadAdminSubPage('dashboard');
 
         // Adiciona eventos de clique para a navegação do admin
         pageContainer.querySelectorAll('.admin-nav-item').forEach(item => {
@@ -1576,7 +1577,7 @@ class PontoMaxApp {
         });
     }
 
-    loadAdminSubPage(subPage, id = null) {
+    loadAdminSubPage(subPage = 'dashboard', id = null) {
         const contentContainer = document.getElementById('admin-main-content');
         if (!contentContainer) return;
 
@@ -1600,7 +1601,9 @@ class PontoMaxApp {
                 // (Aqui podemos adicionar uma lógica de detalhe/lista para registros no futuro)
                 this.renderAdminRegistrosTable(contentContainer);
                 break;
-
+            case 'dashboard':
+                this.renderAdminDashboard(contentContainer);
+                break;
             default:
                 contentContainer.innerHTML = '<h2>Página não encontrada</h2>';
         }
@@ -2112,6 +2115,65 @@ class PontoMaxApp {
         }
     }
 
+    async renderAdminDashboard(container) {
+        container.innerHTML = `<div class="loading-placeholder"><div class="spinner"></div><p>Carregando dashboard...</p></div>`;
+
+        try {
+            const data = await window.authManager.apiCall('/admin/dashboard/');
+
+            const dashboardHTML = `
+        <div class="summary-cards-grid">
+            <div class="summary-card">
+                <div class="card-content"><div class="value">${data.total_users}</div><div class="label">Total de Usuários</div></div>
+                <i data-lucide="users" class="card-icon"></i>
+            </div>
+            <div class="summary-card">
+                <div class="card-content"><div class="value">${data.punches_today}</div><div class="label">Pontos Batidos Hoje</div></div>
+                <i data-lucide="mouse-pointer-click" class="card-icon"></i>
+            </div>
+            <div class="summary-card">
+                <div class="card-content"><div class="value warning">${data.pending_justifications}</div><div class="label">Justificativas Pendentes</div></div>
+                <i data-lucide="alert-triangle" class="card-icon warning"></i>
+            </div>
+        </div>
+        <div class="main-card">
+            <div class="card-header-flex">
+                <h2>Novos Usuários por Mês</h2>
+            </div>
+            <div class="card-content">
+                <canvas id="new-users-chart"></canvas>
+            </div>
+        </div>
+        `;
+            container.innerHTML = dashboardHTML;
+            lucide.createIcons();
+
+            // Lógica para renderizar o gráfico
+            const chartCanvas = document.getElementById('new-users-chart');
+            if (chartCanvas) {
+                const labels = data.new_users_chart.map(item => new Date(item.month).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }));
+                const chartData = data.new_users_chart.map(item => item.count);
+
+                new Chart(chartCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Novos Usuários',
+                            data: chartData,
+                            backgroundColor: 'hsl(217, 91%, 60%, 0.6)',
+                            borderColor: 'hsl(217, 91%, 60%)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                });
+            }
+
+        } catch (error) {
+            container.innerHTML = '<h2>Erro ao carregar o dashboard.</h2>';
+        }
+    }
 }
 
 // Inicializar aplicação

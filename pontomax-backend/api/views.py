@@ -11,7 +11,7 @@ from .models import (
 )
 from django.db import transaction
 from itertools import groupby
-from .serializers import GestorDashboardSerializer, HoleriteSerializer, NotificacaoSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
+from .serializers import AdminDashboardSerializer, GestorDashboardSerializer, HoleriteSerializer, NotificacaoSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -30,6 +30,13 @@ from django.conf import settings
 import os
 from .models import Justificativa
 from .serializers import JustificativaSerializer
+from django.utils import timezone
+from django.db.models.functions import TruncMonth, Cast
+from django.db.models import Count, DateField
+from .serializers import AdminDashboardSerializer
+from .permissions import IsAdminUser
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
 # api/views.py
 
@@ -741,3 +748,34 @@ class NotificacaoViewSet(viewsets.ReadOnlyModelViewSet):
         notificacao.lida = True
         notificacao.save()
         return Response({'status': 'Notificação marcada como lida'})
+    
+class AdminDashboardView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        # Métrica 1: Total de usuários (excluindo superusuários)
+        total_users = User.objects.filter(is_superuser=False).count()
+
+        # Métrica 2: Batidas de ponto hoje
+        today = timezone.now().date()
+        punches_today = RegistroPonto.objects.filter(timestamp__date=today).count()
+
+        # Métrica 3: Justificativas pendentes
+        pending_justifications = Justificativa.objects.filter(status='PENDENTE').count()
+        
+        # Métrica 4: Dados para o gráfico de novos usuários por mês
+        new_users_chart_data = User.objects.annotate(
+            month=Cast(TruncMonth('date_joined'), output_field=DateField())
+        ).values('month').annotate(count=Count('id')).order_by('month')
+
+        # Monta o objeto de dados
+        data = {
+            'total_users': total_users,
+            'punches_today': punches_today,
+            'pending_justifications': pending_justifications,
+            'new_users_chart': new_users_chart_data
+        }
+
+        # Serializa e retorna os dados
+        serializer = AdminDashboardSerializer(data)
+        return Response(serializer.data)
