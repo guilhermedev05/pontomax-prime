@@ -31,42 +31,55 @@ import os
 from .models import Justificativa
 from .serializers import JustificativaSerializer
 
+# api/views.py
+
 def calcular_saldo_banco_horas(user):
     """
-    Calcula o saldo total de horas. A jornada diária é a diferença
-    entre o primeiro e o último registro do dia.
+    Calcula o saldo total de horas. Agora, se um dia tiver uma justificativa
+    aprovada, seu saldo (débito) é desconsiderado.
     """
     punches = RegistroPonto.objects.filter(user=user).order_by('timestamp')
+    # 1. Busca todas as justificativas aprovadas do usuário de uma só vez
+    justificativas_aprovadas = set(Justificativa.objects.filter(
+        user=user, status='APROVADO'
+    ).values_list('data_ocorrencia', flat=True))
+
     total_balance_hours = 0
     jornada_diaria_em_horas = 8.0
 
     for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
         punches_in_day = list(punches_in_day_iter)
         
-        # Só calcula se houver pelo menos uma entrada e uma saída
         if len(punches_in_day) >= 2:
             first_punch = punches_in_day[0]
             last_punch = punches_in_day[-1]
             
-            # Garante que o dia foi fechado com uma saída
             if first_punch.tipo == 'entrada' and last_punch.tipo == 'saida':
                 total_seconds_in_day = (last_punch.timestamp - first_punch.timestamp).total_seconds()
                 worked_hours = total_seconds_in_day / 3600
                 daily_balance = worked_hours - jornada_diaria_em_horas
+
+                # 2. VERIFICAÇÃO: Se o dia teve débito E tem uma justificativa aprovada, o saldo do dia é zerado.
+                if daily_balance < 0 and day in justificativas_aprovadas:
+                    daily_balance = 0
+
                 total_balance_hours += daily_balance
             
     return round(total_balance_hours, 2)
 
-
 def calcular_saldo_mensal(user, ano, mes):
     """
-    Calcula os créditos e débitos de um usuário para um mês/ano específico.
+    Calcula os créditos e débitos do mês. Débitos de dias com justificativa
+    aprovada são ignorados.
     """
     punches = RegistroPonto.objects.filter(
-        user=user,
-        timestamp__year=ano,
-        timestamp__month=mes
+        user=user, timestamp__year=ano, timestamp__month=mes
     ).order_by('timestamp')
+
+    # 1. Busca todas as justificativas aprovadas do usuário no período
+    justificativas_aprovadas = set(Justificativa.objects.filter(
+        user=user, status='APROVADO', data_ocorrencia__year=ano, data_ocorrencia__month=mes
+    ).values_list('data_ocorrencia', flat=True))
 
     total_credits_hours = 0
     total_debits_hours = 0
@@ -82,17 +95,19 @@ def calcular_saldo_mensal(user, ano, mes):
             if first_punch.tipo == 'entrada' and last_punch.tipo == 'saida':
                 total_seconds_in_day = (last_punch.timestamp - first_punch.timestamp).total_seconds()
                 worked_hours = total_seconds_in_day / 3600
-                
                 daily_balance = worked_hours - jornada_diaria_em_horas
+                
                 if daily_balance > 0:
                     total_credits_hours += daily_balance
-                else:
-                    total_debits_hours += abs(daily_balance)
+                elif daily_balance < 0:
+                    # 2. VERIFICAÇÃO: Só adiciona o débito se o dia NÃO tiver justificativa aprovada.
+                    if day not in justificativas_aprovadas:
+                        total_debits_hours += abs(daily_balance)
             
     return {
         'credits': round(total_credits_hours, 2),
         'debits': round(total_debits_hours, 2)
-    }# --- Views da API ---
+    }
 
 # 2. Crie uma ViewSet específica para a administração de usuários
 #    Ela é uma cópia da UserViewSet, mas protegida pela permissão de Admin

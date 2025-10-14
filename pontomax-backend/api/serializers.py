@@ -252,3 +252,13 @@ class NotificacaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notificacao
         fields = ['id', 'mensagem', 'lida', 'criado_em', 'link']
+
+class ChartDataSerializer(serializers.Serializer):
+    month = serializers.DateField()
+    count = serializers.IntegerField()
+
+class AdminDashboardSerializer(serializers.Serializer):
+    total_users = serializers.IntegerField()
+    punches_today = serializers.IntegerField()
+    pending_justifications = serializers.IntegerField()
+    new_users_chart = ChartDataSerializer(many=True)
