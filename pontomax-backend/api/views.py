@@ -218,6 +218,13 @@ class RegistrosView(ListAPIView):
             user=self.request.user,
             timestamp__date__range=[start_date, end_date]
         ).order_by('timestamp')
+        
+        justificativas = Justificativa.objects.filter(
+            user=self.request.user,
+            data_ocorrencia__range=[start_date, end_date]
+        )
+        # 2. Cria um dicionário para busca rápida (ex: {'2025-10-14': objeto_justificativa})
+        justificativas_map = {j.data_ocorrencia.isoformat(): j for j in justificativas}
 
         # 3. Processa os registros para calcular os totais diários
         daily_summaries = []
@@ -242,13 +249,15 @@ class RegistrosView(ListAPIView):
             jornada_diaria = 8.0
             overtime = max(0, worked_hours - jornada_diaria)
             debit = max(0, jornada_diaria - worked_hours) if worked_hours < jornada_diaria else 0
-
+            justificativa_do_dia = justificativas_map.get(day.isoformat())
             daily_summaries.append({
                 'date': day,
                 'worked': round(worked_hours, 2),
                 'overtime': round(overtime, 2),
                 'debit': round(debit, 2),
-                'status': 'Fechado' # Status de exemplo
+                'status': 'Fechado', # Status de exemplo
+                'justificativa_status': justificativa_do_dia.status if justificativa_do_dia else None,
+                'justificativa_motivo': justificativa_do_dia.motivo if justificativa_do_dia else None,
             })
 
         return daily_summaries
@@ -346,10 +355,14 @@ class GestorDashboardView(APIView):
                 'hoursToday': f"{int(worked_hours_today):02d}:{int((worked_hours_today*60)%60):02d}"
             })
 
+        
         # --- Cálculo dos Cards de Estatísticas ---
+        equipe_colaboradores = equipe.filter(profile__perfil='COLABORADOR')
+        pendentes_count = Justificativa.objects.filter(status='PENDENTE', user__in=equipe_colaboradores).count()
+
         stats_data = {
-            'pendentes': 0, # Exemplo, pois não temos a lógica de ajustes
-            'aniversariantes': 0, # Exemplo, pois não temos data de nascimento
+            'pendentes': pendentes_count, # <-- O VALOR AGORA É DINÂMICO
+            'aniversariantes': 0, # Exemplo
             'ativos': usuarios_ativos_hoje,
             'ausentes': equipe.count() - usuarios_ativos_hoje
         }

@@ -93,8 +93,8 @@ class AuthManager {
 
         const permissions = {
             'COLABORADOR': ['dashboard', 'registros', 'holerite', 'perfil'],
-            'GESTOR': ['dashboard', 'perfil', 'equipe', 'banco-horas', 'fechamento'],
-            'ADMIN': ['dashboard', 'registros', 'holerite', 'perfil', 'equipe', 'banco-horas', 'fechamento', 'configuracoes', 'organizacao', 'admin']
+            'GESTOR': ['dashboard', 'perfil', 'equipe', 'banco-horas', 'fechamento', 'justificativas'],
+            'ADMIN': ['dashboard', 'registros', 'holerite', 'perfil', 'equipe', 'banco-horas', 'fechamento', 'configuracoes', 'organizacao', 'admin', 'justificativas']
         };
 
         // CORREÇÃO: Acessa o 'perfil' dentro do objeto aninhado 'profile'

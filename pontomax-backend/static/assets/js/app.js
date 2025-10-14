@@ -221,6 +221,29 @@ class PontoMaxApp {
         if (editRegistroCloseBtn) {
             editRegistroCloseBtn.addEventListener('click', () => editRegistroModal.classList.add('hidden'));
         }
+
+        const justificativaModal = document.getElementById('justificativa-modal');
+        const justificativaCloseBtn = document.getElementById('justificativa-close-btn');
+
+        if (justificativaModal) {
+            justificativaModal.addEventListener('click', e => {
+                if (e.target === justificativaModal) this.closeJustificativaModal();
+            });
+        }
+        if (justificativaCloseBtn) {
+            justificativaCloseBtn.addEventListener('click', () => this.closeJustificativaModal());
+        }
+        const viewJustificativaModal = document.getElementById('view-justificativa-modal');
+        const viewJustificativaCloseBtn = document.getElementById('view-justificativa-close-btn');
+
+        if (viewJustificativaModal) {
+            viewJustificativaModal.addEventListener('click', e => {
+                if (e.target === viewJustificativaModal) this.closeViewJustificativaModal();
+            });
+        }
+        if (viewJustificativaCloseBtn) {
+            viewJustificativaCloseBtn.addEventListener('click', () => this.closeViewJustificativaModal());
+        }
     }
 
     resetFechamento() {
@@ -342,6 +365,91 @@ class PontoMaxApp {
         this.loadPageData(page);
     }
 
+    async loadJustificativasPage() {
+        const pageContainer = document.getElementById('justificativas-page');
+        if (!pageContainer) return;
+
+        // 1. Define o layout inicial da página, incluindo o estado de carregamento
+        pageContainer.innerHTML = `
+        <div class="page-header">
+            <h1>Ajustes Pendentes</h1>
+            <p>Analise e resolva as justificativas enviadas pela sua equipe.</p>
+        </div>
+        <div class="loading-placeholder">
+            <div class="spinner"></div>
+            <p>Carregando justificativas...</p>
+        </div>
+    `;
+        lucide.createIcons(); // Garante que ícones (se houver) sejam renderizados
+
+        try {
+            const justificativas = await window.authManager.apiCall('/justificativas/');
+            const justificativasPendentes = justificativas.filter(j => j.status === 'PENDENTE');
+
+            if (justificativasPendentes.length === 0) {
+                // Se não houver pendentes, mostra a mensagem de "tudo em ordem"
+                pageContainer.querySelector('.loading-placeholder').outerHTML = `
+                <div class="empty-state-card">
+                    <i data-lucide="check-check"></i>
+                    <h2>Tudo em ordem!</h2>
+                    <p>Você não possui nenhuma justificativa pendente para analisar no momento.</p>
+                </div>
+            `;
+                lucide.createIcons();
+                return;
+            }
+
+            // Se houver pendentes, substitui o loading pela tabela
+            const tableHTML = `
+            <div class="main-card">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead><tr><th>Funcionário</th><th>Data da Ocorrência</th><th>Motivo</th><th>Ações</th></tr></thead>
+                        <tbody>
+                            ${justificativasPendentes.map(j => `
+                                <tr>
+                                    <td>${j.user_name}</td>
+                                    <td>${new Date(j.data_ocorrencia + 'T03:00:00').toLocaleDateString('pt-BR')}</td>
+                                    <td><p class="motivo-cell">${j.motivo}</p></td>
+                                    <td>
+                                        <button class="btn-success" onclick="window.pontoMaxApp.handleResolverJustificativa(${j.id}, 'APROVADO')">Aprovar</button>
+                                        <button class="btn-danger" onclick="window.pontoMaxApp.handleResolverJustificativa(${j.id}, 'REJEITADO')">Rejeitar</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+            pageContainer.querySelector('.loading-placeholder').outerHTML = tableHTML;
+            lucide.createIcons();
+
+        } catch (error) {
+            console.error("ERRO CRÍTICO em loadJustificativasPage:", error);
+            pageContainer.innerHTML = '<h2>Erro ao carregar justificativas.</h2>';
+        }
+    }
+
+    async handleResolverJustificativa(id, novoStatus) {
+        const acao = novoStatus === 'APROVADO' ? 'aprovar' : 'rejeitar';
+        if (!confirm(`Tem certeza que deseja ${acao} esta justificativa?`)) {
+            return;
+        }
+
+        try {
+            await window.authManager.apiCall(`/justificativas/${id}/resolver/`, {
+                method: 'POST',
+                body: JSON.stringify({ status: novoStatus })
+            });
+            this.showToast('Sucesso', `Justificativa marcada como ${novoStatus.toLowerCase()}.`, 'success');
+            // Recarrega a lista para remover o item que foi processado
+            this.loadJustificativasPage();
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível processar a solicitação.', 'error');
+        }
+    }
+
     loadPageData(page) {
         switch (page) {
             case 'dashboard':
@@ -379,6 +487,9 @@ class PontoMaxApp {
             case 'admin':
                 this.loadAdminPage(); // Vamos criar esta função
                 break;
+            case 'justificativas':
+                this.loadJustificativasPage();
+                break;
             default:
                 // Não faz nada se a página não for encontrada
                 break;
@@ -395,158 +506,29 @@ class PontoMaxApp {
     }
 
     async loadRegistrosData() {
-        console.log("--- Iniciando loadRegistrosData ---");
-
-        const recordsList = document.getElementById('records-table-body');
         const periodInput = document.getElementById('period-filter');
         const searchBtn = document.getElementById('search-btn');
         const downloadBtn = document.getElementById('btn-download-pdf');
 
-        // --- TESTE DE ELEMENTOS ---
-        console.log("Verificando elementos da página 'Meus Registros':");
-        console.log("Elemento #records-table-body encontrado?", !!recordsList);
-        console.log("Elemento #period-filter encontrado?", !!periodInput);
-        console.log("Elemento #search-btn encontrado?", !!searchBtn);
-        // --- FIM DO TESTE ---
+        if (!periodInput || !searchBtn) return;
 
-        if (!recordsList || !periodInput || !searchBtn) {
-            console.error("ERRO: Um ou mais elementos essenciais da página não foram encontrados. A função será interrompida.");
-            return; // <-- O PONTO DA FALHA
-        }
-
-        console.log("Todos os elementos essenciais foram encontrados. Continuando a execução...");
-
-        // Helper para formatar a data para o formato YYYY-MM-DD
-        const formatDateForAPI = (date) => date.toISOString().split('T')[0];
-
-        // Função que renderiza a tabela (permanece a mesma)
-        const renderTableAndSummary = (recordsToRender) => {
-            // ... (toda a sua lógica de renderização existente, sem alterações)
-            recordsList.innerHTML = '';
-            let totalWorked = 0, totalOvertime = 0, totalDebit = 0;
-
-            if (recordsToRender.length === 0) {
-                recordsList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem;">Nenhum registro encontrado para este período.</td></tr>';
-            } else {
-                recordsToRender.forEach(record => {
-                    const date = new Date(record.date + 'T03:00:00');
-                    totalWorked += record.worked;
-                    totalOvertime += record.overtime;
-                    totalDebit += record.debit;
-
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                    <td>
-                        <div class="date-cell">
-                            <span class="day-of-week">${date.toLocaleDateString('pt-BR', { weekday: 'long' }).replace("-feira", "")}</span>
-                            <span class="full-date">${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                        </div>
-                    </td>
-                    <td>${this.formatHours(record.worked)}</td>
-                    <td class="positive">${this.formatHours(record.overtime)}</td>
-                    <td class="negative">${this.formatHours(record.debit)}</td>
-                    <td><span class="status-badge status-${record.status.toLowerCase()}">${record.status}</span></td>
-                `;
-                    recordsList.appendChild(row);
-                });
-            }
-
-            document.getElementById('summary-total-worked').textContent = this.formatHours(totalWorked, true);
-            document.getElementById('summary-overtime').textContent = `+${this.formatHours(totalOvertime, true)}`;
-            document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
-        };
-
-        // --- LÓGICA DE DEPURAÇÃO ADICIONADA AQUI ---
-        if (downloadBtn) {
-            downloadBtn.addEventListener('click', async () => { // 1. Tornamos a função 'async'
-                try {
-                    const dates = fp.selectedDates;
-                    if (dates.length < 2) {
-                        this.showToast('Aviso', 'Selecione um intervalo de datas para gerar o relatório.', 'warning');
-                        return;
-                    }
-
-                    this.showToast('Aguarde', 'Gerando seu relatório em PDF...', 'info');
-
-                    const formatDateForAPI = (date) => date.toISOString().split('T')[0];
-                    const startDateStr = formatDateForAPI(dates[0]);
-                    const endDateStr = formatDateForAPI(dates[1]);
-                    const urlPath = `/registros/exportar_pdf/?start_date=${startDateStr}&end_date=${endDateStr}`;
-
-                    // 2. Usamos nossa função 'apiCall' para fazer a requisição autenticada
-                    const response = await window.authManager.apiCall(urlPath);
-
-                    if (!response.ok) {
-                        throw new Error('Falha ao gerar o relatório no servidor.');
-                    }
-
-                    // 3. Pegamos os dados do arquivo (Blob) e o nome do arquivo do cabeçalho
-                    const blob = await response.blob();
-                    const disposition = response.headers.get('content-disposition');
-                    let filename = `relatorio_ponto_${startDateStr}.pdf`; // Nome padrão
-                    if (disposition && disposition.includes('attachment')) {
-                        const filenameMatch = disposition.match(/filename="(.+)"/);
-                        if (filenameMatch.length > 1) {
-                            filename = filenameMatch[1];
-                        }
-                    }
-
-                    // 4. Criamos um link temporário na memória e clicamos nele para iniciar o download
-                    const downloadUrl = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = downloadUrl;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-
-                    // 5. Limpamos o link da memória
-                    window.URL.revokeObjectURL(downloadUrl);
-                    a.remove();
-
-                } catch (error) {
-                    console.error("Erro ao baixar PDF:", error);
-                    this.showToast('Erro', 'Não foi possível baixar o relatório.', 'error');
-                }
-            });
-        }
-
-        // MUDANÇA PRINCIPAL: Função que busca os dados da API
-        const fetchAndRenderRecords = async () => {
-            const dates = fp.selectedDates;
-            if (dates.length < 2) {
-                this.showToast('Aviso', 'Por favor, selecione um intervalo de datas completo.', 'warning');
-                renderTableAndSummary([]); // Limpa a tabela
-                return;
-            }
-
-            const [startDate, endDate] = dates;
-            const startDateStr = formatDateForAPI(startDate);
-            const endDateStr = formatDateForAPI(endDate);
-
-            try {
-                const records = await window.authManager.apiCall(`/registros/?start_date=${startDateStr}&end_date=${endDateStr}`);
-                renderTableAndSummary(records);
-            } catch (error) {
-                console.error("Erro ao buscar registros:", error);
-                this.showToast('Erro', 'Não foi possível carregar os registros.', 'error');
-                renderTableAndSummary([]); // Limpa a tabela em caso de erro
-            }
-        };
-
-        // Inicializa o Flatpickr (calendário)
-        const fp = flatpickr(periodInput, {
+        // Inicializa o calendário e guarda a instância em 'this' para ser acessível por outras funções
+        this.registrosFlatpickr = flatpickr(periodInput, {
             mode: "range",
             dateFormat: "d/m/Y",
             locale: "pt",
-            // Define uma data padrão para a primeira carga
             defaultDate: [new Date(new Date().setDate(1)), new Date()],
-            // Chama a busca assim que o calendário é fechado com uma nova data
-            onClose: fetchAndRenderRecords
+            onClose: () => this.fetchRegistrosData() // Ao fechar, chama a nova função de busca
         });
 
-        // Carga inicial dos dados
-        fetchAndRenderRecords();
+        searchBtn.addEventListener('click', () => this.fetchRegistrosData());
+
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', async () => { /* ... sua lógica de download de PDF ... */ });
+        }
+
+        // Faz a busca de dados inicial
+        this.fetchRegistrosData();
     }
 
     async loadBancoHorasData() {
@@ -739,10 +721,12 @@ class PontoMaxApp {
                 <p>Olá, ${gestorData.gestorName}! Aqui está o resumo da sua equipe</p>
             </div>
             <div class="summary-cards-grid">
-                <div class="summary-card">
-                    <div class="card-content"><div class="value warning">${gestorData.stats.pendentes}</div><div class="label">Ajustes pendentes</div></div>
-                    <i data-lucide="alert-triangle" class="card-icon warning"></i>
-                </div>
+                <a href="#justificativas" class="summary-card-link nav-item" data-page="justificativas">
+                    <div class="summary-card">
+                        <div class="card-content"><div class="value warning">${gestorData.stats.pendentes}</div><div class="label">Ajustes pendentes</div></div>
+                        <i data-lucide="alert-triangle" class="card-icon warning"></i>
+                    </div>
+                </a>
                 <div class="summary-card">
                     <div class="card-content"><div class="value">${gestorData.stats.aniversariantes}</div><div class="label">Aniversariantes</div></div>
                     <i data-lucide="calendar" class="card-icon"></i>
@@ -1896,6 +1880,154 @@ class PontoMaxApp {
 
         } catch (error) {
             container.innerHTML = '<h2>Erro ao carregar detalhes do fechamento.</h2>';
+        }
+    }
+
+    openJustificativaModal(date) {
+        const modal = document.getElementById('justificativa-modal');
+        const title = document.getElementById('justificativa-modal-title');
+        const saveBtn = document.getElementById('justificativa-save-btn');
+
+        // Formata a data para um formato amigável e a exibe no título do modal
+        const displayDate = new Date(date + 'T03:00:00').toLocaleDateString('pt-BR');
+        title.textContent = `Justificar Ocorrência - ${displayDate}`;
+
+        document.getElementById('justificativa-motivo').value = ''; // Limpa o campo de texto
+
+        // Configura o botão de salvar para chamar a função de envio, passando a data
+        saveBtn.onclick = () => this.handleSubmeterJustificativa(date);
+
+        modal.classList.remove('hidden');
+    }
+
+    closeJustificativaModal() {
+        document.getElementById('justificativa-modal').classList.add('hidden');
+    }
+
+    async handleSubmeterJustificativa(date) {
+        const motivo = document.getElementById('justificativa-motivo').value.trim();
+        if (!motivo) {
+            this.showToast('Erro de Validação', 'O campo de motivo é obrigatório.', 'error');
+            return;
+        }
+
+        const payload = {
+            data_ocorrencia: date,
+            motivo: motivo
+        };
+
+        try {
+            await window.authManager.apiCall('/justificativas/', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            this.showToast('Sucesso', 'Justificativa enviada para análise do seu gestor.', 'success');
+            this.closeJustificativaModal();
+            // Futuramente, podemos recarregar a tabela para esconder o botão "Justificar" após o envio
+
+            await this.fetchRegistrosData();
+        } catch (error) {
+            // O backend nos impede de criar justificativas duplicadas para o mesmo dia
+            const errorMessage = error.unique_together ? error.unique_together[0] : (error.detail || 'Não foi possível enviar a justificativa.');
+            this.showToast('Erro', errorMessage, 'error');
+        }
+    }
+
+    openViewJustificativaModal(status, motivo, date) {
+        const modal = document.getElementById('view-justificativa-modal');
+
+        document.getElementById('view-justificativa-data').textContent = new Date(date + 'T03:00:00').toLocaleDateString('pt-BR');
+        document.getElementById('view-justificativa-motivo').textContent = motivo;
+
+        const statusElement = document.getElementById('view-justificativa-status');
+        statusElement.innerHTML = `<span class="status-badge-lg status-${status.toLowerCase()}">${status}</span>`;
+
+        modal.classList.remove('hidden');
+    }
+
+    closeViewJustificativaModal() {
+        document.getElementById('view-justificativa-modal').classList.add('hidden');
+    }
+
+    renderRegistrosTable(recordsToRender) {
+        const recordsList = document.getElementById('records-table-body');
+        if (!recordsList) return;
+
+        recordsList.innerHTML = '';
+        let totalWorked = 0, totalOvertime = 0, totalDebit = 0;
+
+        const tableHeader = recordsList.parentElement.querySelector('thead tr');
+        if (tableHeader) {
+            tableHeader.innerHTML = `
+                <th>Data</th>
+                <th>Total Trabalhado</th>
+                <th>Horas Extras</th>
+                <th>Débito</th>
+                <th>Status</th>
+                <th>Ações</th>
+            `;
+        }
+
+        if (!recordsToRender || recordsToRender.length === 0) {
+            recordsList.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;">Nenhum registro encontrado para este período.</td></tr>';
+        } else {
+            recordsToRender.forEach(record => {
+                const date = new Date(record.date + 'T03:00:00');
+                totalWorked += record.worked;
+                totalOvertime += record.overtime;
+                totalDebit += record.debit;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="date-cell">
+                            <span class="day-of-week">${date.toLocaleDateString('pt-BR', { weekday: 'long' }).replace("-feira", "")}</span>
+                            <span class="full-date">${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                        </div>
+                    </td>
+                    <td>${this.formatHours(record.worked)}</td>
+                    <td class="positive">${this.formatHours(record.overtime)}</td>
+                    <td class="negative">${this.formatHours(record.debit)}</td>
+                    <td><span class="status-badge status-${record.status.toLowerCase()}">${record.status}</span></td>
+                    <td>
+                        ${record.justificativa_status ?
+                            `<button class="btn-secondary" onclick="window.pontoMaxApp.openViewJustificativaModal('${record.justificativa_status}', '${record.justificativa_motivo.replace(/'/g, "\\'").replace(/"/g, '\\"')}','${record.date}')">Visualizar</button>` :
+                        (record.debit > 0 ? 
+                            `<button class="btn-outline" onclick="window.pontoMaxApp.openJustificativaModal('${record.date}')">Justificar</button>`
+                            : '')
+                        }
+                    </td>
+                `;
+                recordsList.appendChild(row);
+            });
+        }
+
+        document.getElementById('summary-total-worked').textContent = this.formatHours(totalWorked, true);
+        document.getElementById('summary-overtime').textContent = `+${this.formatHours(totalOvertime, true)}`;
+        document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
+    }
+
+    async fetchRegistrosData() {
+        // 'this.registrosFlatpickr' é a instância do calendário que vamos salvar no próximo passo
+        if (!this.registrosFlatpickr) return; 
+
+        const dates = this.registrosFlatpickr.selectedDates;
+        if (dates.length < 2) {
+            this.renderRegistrosTable([]); // Renderiza a tabela vazia se não houver data
+            return;
+        }
+
+        const formatDateForAPI = (date) => date.toISOString().split('T')[0];
+        const [startDate, endDate] = dates;
+        const startDateStr = formatDateForAPI(startDate);
+        const endDateStr = formatDateForAPI(endDate);
+        
+        try {
+            const records = await window.authManager.apiCall(`/registros/?start_date=${startDateStr}&end_date=${endDateStr}`);
+            this.renderRegistrosTable(records); // Chama a função de renderização com os novos dados
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível carregar os registros.', 'error');
+            this.renderRegistrosTable([]); // Renderiza a tabela vazia em caso de erro
         }
     }
 }

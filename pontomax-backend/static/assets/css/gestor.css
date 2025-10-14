@@ -299,13 +299,13 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    height: 3rem;
-    padding: 0 1.5rem;
+    height: auto; /* Altura flexível */
+    padding: 0.5rem 1rem; /* Padding para um botão um pouco menor */
     background: var(--danger);
-    color: var(--danger-foreground);
+    color: var(--success-foreground);
     border: none;
     border-radius: var(--radius);
-    font-size: 1rem;
+    font-size: 0.875rem; /* Fonte um pouco menor */
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -665,7 +665,9 @@
     transition: opacity 0.3s, visibility 0.3s;
 }
 .sidebar-overlay.is-open { opacity: 1; visibility: visible; }
-
+a.summary-card-link {
+    text-decoration: none;
+}
 /* Animação que faz a barra encolher da direita para a esquerda */
 @keyframes shrink {
     from {

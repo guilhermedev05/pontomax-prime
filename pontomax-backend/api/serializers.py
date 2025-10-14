@@ -229,3 +229,21 @@ class JustificativaSerializer(serializers.ModelSerializer):
         model = Justificativa
         fields = ['id', 'user', 'user_name', 'data_ocorrencia', 'motivo', 'status', 'data_criacao']
         read_only_fields = ['user', 'status', 'data_criacao'] # O usuário só pode definir a data e o motivo na criação
+        
+class RegistroDiarioSerializer(serializers.Serializer):
+    """
+    Serializer para o resumo de um dia de trabalho, com dados calculados.
+    """
+    date = serializers.DateField()
+    worked = serializers.FloatField()
+    overtime = serializers.FloatField()
+    debit = serializers.FloatField()
+    status = serializers.CharField()
+    # ADICIONE OS CAMPOS ABAIXO
+    justificativa_status = serializers.CharField(allow_null=True)
+    justificativa_motivo = serializers.CharField(allow_null=True)
+
+    class Meta:
+        # fields = ['date', 'worked', 'overtime', 'debit', 'status'] # Remova ou comente esta linha se ela existir
+        # A lista de fields é inferida quando não há um 'Meta' explícito com 'model'.
+        pass

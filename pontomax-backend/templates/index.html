@@ -361,6 +361,8 @@
             </div>
 
             <div id="admin-page" class="content-page"></div>
+
+            <div id="justificativas-page" class="content-page"></div>
         </main>
     </div>
 
@@ -499,6 +501,56 @@
             </form>
         </div>
     </div>
+    <div id="view-justificativa-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button id="view-justificativa-close-btn" class="modal-close-btn">
+                <i data-lucide="x"></i>
+            </button>
+
+            <div class="modal-header-simple">
+                <h2 class="modal-title" id="view-justificativa-title">Detalhes da Justificativa</h2>
+            </div>
+
+            <div class="justificativa-details">
+                <div class="detail-item">
+                    <span class="detail-label">Data:</span>
+                    <span class="detail-value" id="view-justificativa-data"></span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value" id="view-justificativa-status"></span>
+                </div>
+                <div class="detail-item column">
+                    <span class="detail-label">Motivo Enviado:</span>
+                    <p class="detail-text" id="view-justificativa-motivo"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="justificativa-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button id="justificativa-close-btn" class="modal-close-btn">
+                <i data-lucide="x"></i>
+            </button>
+
+            <div class="modal-header-simple">
+                <h2 class="modal-title" id="justificativa-modal-title">Justificar Ocorrência</h2>
+            </div>
+
+            <form class="modal-form">
+                <div class="form-group">
+                    <label for="justificativa-motivo">Motivo da ocorrência</label>
+                    <textarea id="justificativa-motivo" class="form-input" rows="4" placeholder="Ex: Atraso devido a consulta médica, com atestado anexo via e-mail."></textarea>
+                </div>
+
+                <div class="modal-actions single-button">
+                    <button type="button" id="justificativa-save-btn" class="btn-primary">Enviar Justificativa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <!-- JS do Flatpickr em Português -->
     <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
