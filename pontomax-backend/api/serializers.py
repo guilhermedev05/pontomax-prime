@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto, Fechamento, HoleriteGerado
+from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto, Fechamento, HoleriteGerado, Notificacao
 from datetime import date
 from django.utils import timezone
 from .models import Justificativa
@@ -247,3 +247,8 @@ class RegistroDiarioSerializer(serializers.Serializer):
         # fields = ['date', 'worked', 'overtime', 'debit', 'status'] # Remova ou comente esta linha se ela existir
         # A lista de fields é inferida quando não há um 'Meta' explícito com 'model'.
         pass
+
+class NotificacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notificacao
+        fields = ['id', 'mensagem', 'lida', 'criado_em', 'link']

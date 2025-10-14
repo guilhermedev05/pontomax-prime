@@ -6,12 +6,12 @@ from django.contrib.auth.models import User
 from datetime import date
 from django.utils import timezone
 from .models import (
-    Holerite, RegistroPonto, Fechamento, HoleriteGerado,
+    Holerite, Notificacao, RegistroPonto, Fechamento, HoleriteGerado,
     Vencimento, Desconto, VencimentoGerado, DescontoGerado
 )
 from django.db import transaction
 from itertools import groupby
-from .serializers import GestorDashboardSerializer, HoleriteSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
+from .serializers import GestorDashboardSerializer, HoleriteSerializer, NotificacaoSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -675,8 +675,16 @@ class JustificativaViewSet(viewsets.ModelViewSet):
         return Justificativa.objects.all()
 
     def perform_create(self, serializer):
-        """ Garante que a justificativa seja criada para o usuário logado. """
-        serializer.save(user=self.request.user)
+        justificativa = serializer.save(user=self.request.user)
+        # Notifica todos os gestores e admins
+        gestores = User.objects.filter(profile__perfil__in=['GESTOR', 'ADMIN'])
+        for gestor in gestores:
+            Notificacao.objects.create(
+                user=gestor,
+                mensagem=f"{justificativa.user.get_full_name()} enviou uma nova justificativa.",
+                link="#justificativas" # Link para a página de justificativas do gestor
+            )
+
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated]) # Adicionar permissão de gestor aqui seria ideal no futuro
     def resolver(self, request, pk=None):
@@ -696,6 +704,25 @@ class JustificativaViewSet(viewsets.ModelViewSet):
         justificativa.data_resolucao = timezone.now()
         justificativa.save()
 
-        # TODO: Futuramente, aqui será o gatilho para enviar uma notificação ao colaborador.
+        Notificacao.objects.create(
+            user=justificativa.user,
+            mensagem=f"Sua justificativa para {justificativa.data_ocorrencia.strftime('%d/%m')} foi {novo_status.lower()}.",
+            link="#registros" # Link para a página de registros do colaborador
+        )
 
         return Response(self.get_serializer(justificativa).data)
+
+class NotificacaoViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NotificacaoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Retorna apenas as notificações não lidas do usuário logado
+        return Notificacao.objects.filter(user=self.request.user, lida=False)
+
+    @action(detail=True, methods=['post'])
+    def marcar_como_lida(self, request, pk=None):
+        notificacao = self.get_object()
+        notificacao.lida = True
+        notificacao.save()
+        return Response({'status': 'Notificação marcada como lida'})

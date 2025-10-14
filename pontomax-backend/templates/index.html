@@ -113,32 +113,46 @@
                         <i data-lucide="shield-check"></i> Admin
                     </a>
                 </nav>
-
-                <div class="user-menu">
-                    <div class="user-avatar" id="user-menu-trigger">
-                        <span id="user-initials">U</span>
-                    </div>
-                    <div class="dropdown-menu" id="user-dropdown">
-                        <div class="user-info">
-                            <p class="user-name" id="user-name">Usuário</p>
-                            <p class="user-email" id="user-email">usuario@email.com</p>
-                            <span class="user-role" id="user-role">COLABORADOR</span>
+                <div class="header-right">
+                    <div class="user-menu">
+                        <div class="user-avatar" id="user-menu-trigger">
+                            <span id="user-initials">U</span>
                         </div>
-                        <div class="dropdown-divider"></div>
-                        <a href="#perfil" class="dropdown-item">
-                            <i data-lucide="user"></i>
-                            Perfil
-                        </a>
-                        <a href="#configuracoes" class="dropdown-item">
-                            <i data-lucide="settings"></i>
-                            Configurações
-
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <button class="dropdown-item" id="logout-btn">
-                            <i data-lucide="log-out"></i>
-                            Sair
-                        </button>
+                        <div class="dropdown-menu" id="user-dropdown">
+                            <div class="user-info">
+                                <p class="user-name" id="user-name">Usuário</p>
+                                <p class="user-email" id="user-email">usuario@email.com</p>
+                                <span class="user-role" id="user-role">COLABORADOR</span>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="#perfil" class="dropdown-item">
+                                <i data-lucide="user"></i>
+                                Perfil
+                            </a>
+                            <a href="#configuracoes" class="dropdown-item">
+                                <i data-lucide="settings"></i>
+                                Configurações
+    
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" id="logout-btn">
+                                <i data-lucide="log-out"></i>
+                                Sair
+                            </button>
+                        </div>
+                    </div>
+                    <div class="notification-bell" id="notification-bell">
+                        <i data-lucide="bell"></i>
+                        <span class="notification-badge hidden" id="notification-badge"></span>
+                    </div>
+    
+                    <div class="dropdown-menu notification-dropdown" id="notification-dropdown">
+                        <div class="notification-header">
+                            <h3>Notificações</h3>
+                        </div>
+                        <div class="notification-list" id="notification-list">
+                            <p class="no-notifications">Nenhuma nova notificação</p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -527,3 +527,40 @@ input[readonly] {
 .status-pendente { background-color: #f59e0b; } /* Amarelo */
 .status-aprovado { background-color: #10b981; } /* Verde */
 .status-rejeitado { background-color: #ef4444; } /* Vermelho */
+
+.notification-bell {
+    position: relative;
+    cursor: pointer;
+    padding: 0.5rem; 
+    padding-bottom: 0px;
+    color: var(--muted-foreground);
+}
+.notification-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 10px;
+    height: 10px;
+    background-color: var(--danger);
+    border-radius: 50%;
+    border: 2px solid white;
+}
+.notification-dropdown {
+    min-width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    top: 0;
+}
+.notification-header { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+.notification-header h3 { margin: 0; font-size: 1rem; }
+.notification-list .no-notifications { padding: 1.5rem; text-align: center; color: var(--muted-foreground); }
+.notification-item {
+    display: block;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--foreground);
+    font-size: 0.875rem;
+}
+.notification-item:last-child { border-bottom: none; }
+.notification-item:hover { background-color: var(--background); }

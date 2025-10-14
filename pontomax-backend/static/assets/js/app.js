@@ -72,6 +72,7 @@ class PontoMaxApp {
 
         // Verificar autenticação
         this.checkAuthentication();
+        this.setupNotificationSystem();
     }
 
 
@@ -101,22 +102,44 @@ class PontoMaxApp {
         // Menu do usuário
         const userMenuTrigger = document.getElementById('user-menu-trigger');
         const userDropdown = document.getElementById('user-dropdown');
+        const notificationBell = document.getElementById('notification-bell');
+        const notificationDropdown = document.getElementById('notification-dropdown');
 
+        // Função auxiliar para fechar todos os dropdowns abertos
+        const closeAllDropdowns = () => {
+            userDropdown.classList.remove('show');
+            notificationDropdown.classList.remove('show');
+        };
+
+        // Adiciona um listener no documento inteiro para fechar os menus ao clicar fora
+        document.addEventListener('click', closeAllDropdowns);
+
+        // Lógica para o menu de usuário
         if (userMenuTrigger && userDropdown) {
             userMenuTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                userDropdown.classList.toggle('show');
+                e.stopPropagation(); // Impede que o clique feche o menu imediatamente
+                const isShowing = userDropdown.classList.contains('show');
+                closeAllDropdowns(); // Fecha todos os menus primeiro
+                if (!isShowing) {
+                    userDropdown.classList.add('show'); // Abre o menu de usuário
+                }
             });
-
-            // Fechar dropdown ao clicar fora
-            document.addEventListener('click', () => {
-                userDropdown.classList.remove('show');
-            });
-
-            userDropdown.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
+            userDropdown.addEventListener('click', e => e.stopPropagation());
         }
+
+        // Lógica para o menu de notificações
+        if (notificationBell && notificationDropdown) {
+            notificationBell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isShowing = notificationDropdown.classList.contains('show');
+                closeAllDropdowns(); // Fecha todos os menus primeiro
+                if (!isShowing) {
+                    notificationDropdown.classList.add('show'); // Abre o menu de notificações
+                }
+            });
+            notificationDropdown.addEventListener('click', e => e.stopPropagation());
+        }
+        // --- FIM DA LÓGICA UNIFICADA ---
 
         // Botão de logout
         const logoutBtn = document.getElementById('logout-btn');
@@ -1991,11 +2014,11 @@ class PontoMaxApp {
                     <td><span class="status-badge status-${record.status.toLowerCase()}">${record.status}</span></td>
                     <td>
                         ${record.justificativa_status ?
-                            `<button class="btn-secondary" onclick="window.pontoMaxApp.openViewJustificativaModal('${record.justificativa_status}', '${record.justificativa_motivo.replace(/'/g, "\\'").replace(/"/g, '\\"')}','${record.date}')">Visualizar</button>` :
-                        (record.debit > 0 ? 
+                        `<button class="btn-secondary" onclick="window.pontoMaxApp.openViewJustificativaModal('${record.justificativa_status}', '${record.justificativa_motivo.replace(/'/g, "\\'").replace(/"/g, '\\"')}','${record.date}')">Visualizar</button>` :
+                        (record.debit > 0 ?
                             `<button class="btn-outline" onclick="window.pontoMaxApp.openJustificativaModal('${record.date}')">Justificar</button>`
                             : '')
-                        }
+                    }
                     </td>
                 `;
                 recordsList.appendChild(row);
@@ -2009,7 +2032,7 @@ class PontoMaxApp {
 
     async fetchRegistrosData() {
         // 'this.registrosFlatpickr' é a instância do calendário que vamos salvar no próximo passo
-        if (!this.registrosFlatpickr) return; 
+        if (!this.registrosFlatpickr) return;
 
         const dates = this.registrosFlatpickr.selectedDates;
         if (dates.length < 2) {
@@ -2021,7 +2044,7 @@ class PontoMaxApp {
         const [startDate, endDate] = dates;
         const startDateStr = formatDateForAPI(startDate);
         const endDateStr = formatDateForAPI(endDate);
-        
+
         try {
             const records = await window.authManager.apiCall(`/registros/?start_date=${startDateStr}&end_date=${endDateStr}`);
             this.renderRegistrosTable(records); // Chama a função de renderização com os novos dados
@@ -2030,6 +2053,65 @@ class PontoMaxApp {
             this.renderRegistrosTable([]); // Renderiza a tabela vazia em caso de erro
         }
     }
+
+    setupNotificationSystem() {
+        // A lógica de clique foi movida para setupEventListeners.
+        // A única responsabilidade desta função agora é iniciar a busca por notificações.
+        this.fetchNotifications(); // Verifica ao carregar
+        setInterval(() => this.fetchNotifications(), 60000); // Verifica a cada 60 segundos
+    }
+
+    async fetchNotifications() {
+        if (!window.authManager.isLoggedIn()) return;
+
+        try {
+            const notifications = await window.authManager.apiCall('/notificacoes/');
+            this.renderNotifications(notifications);
+        } catch (error) {
+            console.error("Erro ao buscar notificações:", error);
+        }
+    }
+
+    renderNotifications(notifications) {
+        const badge = document.getElementById('notification-badge');
+        const list = document.getElementById('notification-list');
+
+        if (notifications.length > 0) {
+            badge.classList.remove('hidden');
+            badge.textContent = notifications.length > 9 ? '9+' : notifications.length;
+            list.innerHTML = notifications.map(n => `
+                <a href="${n.link || '#'}" class="notification-item" data-page="${n.link?.substring(1)}" data-notification-id="${n.id}">
+                    ${n.mensagem}
+                </a>
+            `).join('');
+        } else {
+            badge.classList.add('hidden');
+            list.innerHTML = '<p class="no-notifications">Nenhuma nova notificação</p>';
+        }
+
+        // Adiciona evento de clique para marcar como lida e navegar
+        list.querySelectorAll('.notification-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const notificationId = item.dataset.notificationId;
+                const page = item.dataset.page;
+                this.handleNotificationClick(notificationId, page);
+            });
+        });
+    }
+
+    async handleNotificationClick(id, page) {
+        try {
+            await window.authManager.apiCall(`/notificacoes/${id}/marcar_como_lida/`, { method: 'POST' });
+            if (page) {
+                this.navigateToPage(page);
+            }
+            this.fetchNotifications(); // Atualiza a lista
+        } catch (error) {
+            console.error('Erro ao marcar notificação como lida:', error);
+        }
+    }
+
 }
 
 // Inicializar aplicação

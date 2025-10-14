@@ -112,6 +112,17 @@ body {
     flex-direction: column;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Define o espaçamento entre os ícones */
+}
+
+/* Remove a margem extra do sino que tínhamos antes, pois o 'gap' agora controla isso */
+.notification-bell {
+    margin-right: 0;
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }

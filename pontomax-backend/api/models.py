@@ -150,3 +150,16 @@ class Justificativa(models.Model):
 
     def __str__(self):
         return f"Justificativa de {self.user.username} para {self.data_ocorrencia.strftime('%d/%m/%Y')}"
+    
+class Notificacao(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificacoes')
+    mensagem = models.TextField()
+    lida = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    link = models.CharField(max_length=255, null=True, blank=True, help_text="Link para onde a notificação deve levar")
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f"Notificação para {self.user.username}: {self.mensagem[:30]}..."
