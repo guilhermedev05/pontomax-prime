@@ -99,45 +99,59 @@ class PontoMaxApp {
             });
         }
 
-        // Menu do usuário
         const userMenuTrigger = document.getElementById('user-menu-trigger');
         const userDropdown = document.getElementById('user-dropdown');
         const notificationBell = document.getElementById('notification-bell');
         const notificationDropdown = document.getElementById('notification-dropdown');
-
-        // Função auxiliar para fechar todos os dropdowns abertos
+        
         const closeAllDropdowns = () => {
-            userDropdown.classList.remove('show');
-            notificationDropdown.classList.remove('show');
+            if (userDropdown) userDropdown.classList.remove('show');
+            if (notificationDropdown) notificationDropdown.classList.remove('show');
         };
 
-        // Adiciona um listener no documento inteiro para fechar os menus ao clicar fora
         document.addEventListener('click', closeAllDropdowns);
 
         // Lógica para o menu de usuário
         if (userMenuTrigger && userDropdown) {
             userMenuTrigger.addEventListener('click', (e) => {
-                e.stopPropagation(); // Impede que o clique feche o menu imediatamente
+                e.stopPropagation();
                 const isShowing = userDropdown.classList.contains('show');
-                closeAllDropdowns(); // Fecha todos os menus primeiro
+                closeAllDropdowns();
                 if (!isShowing) {
-                    userDropdown.classList.add('show'); // Abre o menu de usuário
+                    userDropdown.classList.add('show');
                 }
             });
-            userDropdown.addEventListener('click', e => e.stopPropagation());
+
+            // --- CORREÇÃO PRINCIPAL AQUI ---
+            userDropdown.addEventListener('click', e => {
+                // Verifica se o clique foi em um link de navegação dentro do dropdown
+                const navItem = e.target.closest('.nav-item[data-page]');
+                
+                // Se NÃO FOI em um link de navegação, impede a propagação para não fechar o menu.
+                // Se FOI em um link, DEIXA o evento se propagar para ser capturado pelo listener de navegação.
+                if (!navItem) {
+                    e.stopPropagation();
+                }
+            });
         }
 
-        // Lógica para o menu de notificações
+        // Lógica para o menu de notificações (com a mesma correção)
         if (notificationBell && notificationDropdown) {
             notificationBell.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const isShowing = notificationDropdown.classList.contains('show');
-                closeAllDropdowns(); // Fecha todos os menus primeiro
+                closeAllDropdowns();
                 if (!isShowing) {
-                    notificationDropdown.classList.add('show'); // Abre o menu de notificações
+                    notificationDropdown.classList.add('show');
                 }
             });
-            notificationDropdown.addEventListener('click', e => e.stopPropagation());
+            
+            notificationDropdown.addEventListener('click', e => {
+                const navItem = e.target.closest('.nav-item[data-page]');
+                if (!navItem) {
+                    e.stopPropagation();
+                }
+            });
         }
         // --- FIM DA LÓGICA UNIFICADA ---
 
@@ -512,6 +526,9 @@ class PontoMaxApp {
                 break;
             case 'justificativas':
                 this.loadJustificativasPage();
+                break;
+            case 'perfil':
+                this.loadProfilePage();
                 break;
             default:
                 // Não faz nada se a página não for encontrada
@@ -2306,6 +2323,81 @@ class PontoMaxApp {
             this.loadAdminSubPage('users'); // Recarrega a tabela
         } catch (error) {
             this.showToast('Erro', 'Não foi possível executar a ação em massa.', 'error');
+        }
+    }
+
+    loadProfilePage() {
+        const pageContainer = document.getElementById('perfil-page');
+        if (!pageContainer) return;
+
+        const user = window.authManager.getCurrentUser();
+
+        pageContainer.innerHTML = `
+        <div class="page-header">
+            <h1>Meu Perfil</h1>
+            <p>Gerencie suas informações pessoais e de segurança.</p>
+        </div>
+        <div class="profile-layout">
+            <div class="main-card">
+                <div class="card-header-flex"><h2>Informações</h2></div>
+                <div class="card-content">
+                    <p><strong>Nome:</strong> ${user.nome}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Cargo:</strong> ${user.profile.perfil}</p>
+                </div>
+            </div>
+            <div class="main-card">
+                <div class="card-header-flex"><h2>Alterar Senha</h2></div>
+                <form id="change-password-form" class="card-content">
+                    <div class="form-group">
+                        <label for="old_password">Senha Atual</label>
+                        <input type="password" id="old_password" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">Nova Senha</label>
+                        <input type="password" id="new_password" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password2">Confirmar Nova Senha</label>
+                        <input type="password" id="new_password2" class="form-input" required>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn-primary">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+        const form = document.getElementById('change-password-form');
+        form.addEventListener('submit', (e) => this.handleChangePassword(e));
+    }
+
+    async handleChangePassword(e) {
+        e.preventDefault();
+        const old_password = document.getElementById('old_password').value;
+        const new_password = document.getElementById('new_password').value;
+        const new_password2 = document.getElementById('new_password2').value;
+
+        if (new_password !== new_password2) {
+            this.showToast('Erro', 'A nova senha e a confirmação não conferem.', 'error');
+            return;
+        }
+
+        const payload = { old_password, new_password, new_password2 };
+
+        try {
+            const response = await window.authManager.apiCall('/change-password/', {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            this.showToast('Sucesso', response.detail, 'success');
+            // Por segurança, fazemos o logout para que o usuário entre com a nova senha
+            setTimeout(() => this.handleLogout(), 2000);
+        } catch (error) {
+            // Pega a mensagem de erro específica da API
+            const errorMessage = error.old_password?.[0] || error.new_password?.[0] || 'Não foi possível alterar a senha.';
+            this.showToast('Erro', errorMessage, 'error');
         }
     }
 }

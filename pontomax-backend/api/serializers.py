@@ -269,3 +269,29 @@ class AdminDashboardSerializer(serializers.Serializer):
     pending_justifications = serializers.IntegerField()
     new_users_chart = ChartDataSerializer(many=True)
     recent_logs = LogAtividadeSerializer(many=True)
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer para a funcionalidade de alteração de senha.
+    """
+    old_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    new_password2 = serializers.CharField(required=True, write_only=True, label="Confirm new password")
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Sua senha antiga foi digitada incorretamente. Por favor, tente novamente.")
+        return value
+
+    def validate(self, data):
+        if data['new_password'] != data['new_password2']:
+            raise serializers.ValidationError({"new_password": "A nova senha e a confirmação não conferem."})
+        return data
+
+    def save(self, **kwargs):
+        password = self.validated_data['new_password']
+        user = self.context['request'].user
+        user.set_password(password)
+        user.save()
+        return user

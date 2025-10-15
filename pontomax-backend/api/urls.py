@@ -2,7 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    AdminDashboardView, AdminLogAtividadeViewSet, BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, NotificacaoViewSet, RegistrosView, UserProfileView,
+    AdminDashboardView, AdminLogAtividadeViewSet, BancoHorasEquipeView, BancoHorasSaldoView, ChangePasswordView, GestorDashboardView, HoleriteView, NotificacaoViewSet, RegistrosView, UserProfileView,
     UserViewSet, RegistroPontoViewSet, FechamentoViewSet,
     AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet, GerarRelatorioPontoPDF, GerarHoleritePDF, JustificativaViewSet  # Adicione os imports do Admin
 )
@@ -41,6 +41,7 @@ urlpatterns = [
     path('registros/exportar_pdf/', GerarRelatorioPontoPDF.as_view(), name='relatorio_pdf'),
     path('holerites/exportar_pdf/', GerarHoleritePDF.as_view(), name='holerite_pdf'),
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     # Novas rotas do painel de admin
     path('admin/', include(admin_router.urls)),
     

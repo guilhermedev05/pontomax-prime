@@ -526,3 +526,9 @@ body {
     white-space: nowrap;
     border: 0;
 }
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}

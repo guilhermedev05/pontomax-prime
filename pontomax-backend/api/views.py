@@ -13,12 +13,12 @@ from django.db import transaction
 from itertools import groupby
 from .serializers import AdminDashboardSerializer, GestorDashboardSerializer, HoleriteSerializer, LogAtividadeSerializer, NotificacaoSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
 # Ferramentas do Django Rest Framework
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
-from .serializers import FechamentoSerializer
+from .serializers import FechamentoSerializer, ChangePasswordSerializer
 from rest_framework.decorators import action
 from decimal import Decimal
 from .permissions import IsAdminUser
@@ -834,3 +834,24 @@ class AdminLogAtividadeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LogAtividade.objects.all()
     serializer_class = LogAtividadeSerializer
     permission_classes = [IsAdminUser]
+    
+class ChangePasswordView(generics.UpdateAPIView):
+    """
+    Endpoint para um usuário alterar a própria senha.
+    """
+    serializer_class = ChangePasswordSerializer
+    model = User
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"detail": "Senha alterada com sucesso."}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
