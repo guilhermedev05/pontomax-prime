@@ -563,8 +563,87 @@ class PontoMaxApp {
 
         searchBtn.addEventListener('click', () => this.fetchRegistrosData());
 
+        const fetchAndRenderRecords = async () => {
+            const dates = fp.selectedDates;
+            if (dates.length < 2) {
+                this.showToast('Aviso', 'Por favor, selecione um intervalo de datas completo.', 'warning');
+                renderTableAndSummary([]); // Limpa a tabela
+                return;
+            }
+
+            const [startDate, endDate] = dates;
+            const startDateStr = formatDateForAPI(startDate);
+            const endDateStr = formatDateForAPI(endDate);
+
+            try {
+                const records = await window.authManager.apiCall(`/registros/?start_date=${startDateStr}&end_date=${endDateStr}`);
+                renderTableAndSummary(records);
+            } catch (error) {
+                console.error("Erro ao buscar registros:", error);
+                this.showToast('Erro', 'Não foi possível carregar os registros.', 'error');
+                renderTableAndSummary([]); // Limpa a tabela em caso de erro
+            }
+        };
+        const fp = flatpickr(periodInput, {
+            mode: "range",
+            dateFormat: "d/m/Y",
+            locale: "pt",
+            defaultDate: [new Date(new Date().setDate(1)), new Date()],
+            onClose: fetchAndRenderRecords
+        });
+
         if (downloadBtn) {
-            downloadBtn.addEventListener('click', async () => { /* ... sua lógica de download de PDF ... */ });
+            downloadBtn.addEventListener('click', async () => { // 1. Tornamos a função 'async'
+                try {
+                    const dates = fp.selectedDates;
+                    if (dates.length < 2) {
+                        this.showToast('Aviso', 'Selecione um intervalo de datas para gerar o relatório.', 'warning');
+                        return;
+                    }
+
+                    this.showToast('Aguarde', 'Gerando seu relatório em PDF...', 'info');
+
+                    const formatDateForAPI = (date) => date.toISOString().split('T')[0];
+                    const startDateStr = formatDateForAPI(dates[0]);
+                    const endDateStr = formatDateForAPI(dates[1]);
+                    const urlPath = `/registros/exportar_pdf/?start_date=${startDateStr}&end_date=${endDateStr}`;
+
+                    // 2. Usamos nossa função 'apiCall' para fazer a requisição autenticada
+                    const response = await window.authManager.apiCall(urlPath);
+
+                    if (!response.ok) {
+                        throw new Error('Falha ao gerar o relatório no servidor.');
+                    }
+
+                    // 3. Pegamos os dados do arquivo (Blob) e o nome do arquivo do cabeçalho
+                    const blob = await response.blob();
+                    const disposition = response.headers.get('content-disposition');
+                    let filename = `relatorio_ponto_${startDateStr}.pdf`; // Nome padrão
+                    if (disposition && disposition.includes('attachment')) {
+                        const filenameMatch = disposition.match(/filename="(.+)"/);
+                        if (filenameMatch.length > 1) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+
+                    // 4. Criamos um link temporário na memória e clicamos nele para iniciar o download
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+
+                    // 5. Limpamos o link da memória
+                    window.URL.revokeObjectURL(downloadUrl);
+                    a.remove();
+
+                } catch (error) {
+                    console.error("Erro ao baixar PDF:", error);
+                    this.showToast('Erro', 'Não foi possível baixar o relatório.', 'error');
+                }
+            });
         }
 
         // Faz a busca de dados inicial
@@ -1055,7 +1134,7 @@ class PontoMaxApp {
     }
 
     // Em app.js, adicione estas duas novas funções à classe PontoMaxApp
-    async openEmployeeModal(employeeId, isAdmin = False) {
+    async openEmployeeModal(employeeId, isAdmin = false) {
         const modal = document.getElementById('employee-modal');
         // Guardamos o ID no próprio elemento do modal para fácil acesso
         modal.dataset.employeeId = employeeId;
