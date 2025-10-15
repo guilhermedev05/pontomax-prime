@@ -1556,6 +1556,10 @@ class PontoMaxApp {
                             <i data-lucide="history"></i>
                             <span>Registros de Ponto</span>
                         </a>
+                        <a href="#admin/logs" class="admin-nav-item" data-admin-page="logs">
+                            <i data-lucide="shield"></i>
+                            <span>Logs de Atividade</span>
+                        </a>
                     </nav>
                 </aside>
                 <main id="admin-main-content" class="admin-main-content"></main>
@@ -1603,6 +1607,9 @@ class PontoMaxApp {
                 break;
             case 'dashboard':
                 this.renderAdminDashboard(contentContainer);
+                break;
+            case 'logs': // <-- Adicione este case
+                this.renderAdminLogsPage(contentContainer);
                 break;
             default:
                 contentContainer.innerHTML = '<h2>Página não encontrada</h2>';
@@ -2122,7 +2129,7 @@ class PontoMaxApp {
             const data = await window.authManager.apiCall('/admin/dashboard/');
 
             const dashboardHTML = `
-        <div class="summary-cards-grid">
+    <div class="summary-cards-grid">
             <div class="summary-card">
                 <div class="card-content"><div class="value">${data.total_users}</div><div class="label">Total de Usuários</div></div>
                 <i data-lucide="users" class="card-icon"></i>
@@ -2136,15 +2143,29 @@ class PontoMaxApp {
                 <i data-lucide="alert-triangle" class="card-icon warning"></i>
             </div>
         </div>
+    <div class="admin-dashboard-grid">
         <div class="main-card">
-            <div class="card-header-flex">
-                <h2>Novos Usuários por Mês</h2>
-            </div>
+            <div class="card-header-flex"><h2>Novos Usuários por Mês</h2></div>
+            <div class="card-content"><canvas id="new-users-chart"></canvas></div>
+        </div>
+        <div class="main-card">
+            <div class="card-header-flex"><h2>Atividade Recente</h2></div>
             <div class="card-content">
-                <canvas id="new-users-chart"></canvas>
+                <ul class="recent-logs-list">
+                    ${data.recent_logs.map(log => `
+                        <li>
+                            <strong>${log.action_type}</strong> por ${log.user_name}
+                            <small>${new Date(log.timestamp).toLocaleString('pt-BR')}</small>
+                        </li>
+                    `).join('')}
+                </ul>
+                <div class="card-footer">
+                    <a href="#admin/logs" class="btn-outline nav-item" data-page="admin-logs-redirect">Ver todos os logs...</a>
+                </div>
             </div>
         </div>
-        `;
+    </div>
+    `;
             container.innerHTML = dashboardHTML;
             lucide.createIcons();
 
@@ -2172,6 +2193,35 @@ class PontoMaxApp {
 
         } catch (error) {
             container.innerHTML = '<h2>Erro ao carregar o dashboard.</h2>';
+        }
+    }
+
+    async renderAdminLogsPage(container) {
+        container.innerHTML = `<div class="loading-placeholder">...</div>`;
+        try {
+            const logs = await window.authManager.apiCall('/admin/logs/');
+            let tableHTML = `
+        <div class="main-card">
+            <div class="card-header-flex"><h2>Logs de Atividade do Sistema</h2></div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Detalhes</th></tr></thead>
+                    <tbody>
+                        ${logs.map(log => `
+                            <tr>
+                                <td>${new Date(log.timestamp).toLocaleString('pt-BR')}</td>
+                                <td>${log.user_name}</td>
+                                <td>${log.action_type}</td>
+                                <td>${log.details}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+            container.innerHTML = tableHTML;
+        } catch (error) {
+            container.innerHTML = `<h2>Erro ao carregar logs.</h2>`;
         }
     }
 }

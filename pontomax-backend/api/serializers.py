@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Holerite, Vencimento, Desconto, Profile, RegistroPonto, Fechamento, HoleriteGerado, Notificacao
+from .models import Holerite, LogAtividade, Vencimento, Desconto, Profile, RegistroPonto, Fechamento, HoleriteGerado, Notificacao
 from datetime import date
 from django.utils import timezone
 from .models import Justificativa
@@ -257,8 +257,15 @@ class ChartDataSerializer(serializers.Serializer):
     month = serializers.DateField()
     count = serializers.IntegerField()
 
+class LogAtividadeSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True, default='Sistema')
+    class Meta:
+        model = LogAtividade
+        fields = ['id', 'user_name', 'action_type', 'details', 'timestamp']
+        
 class AdminDashboardSerializer(serializers.Serializer):
     total_users = serializers.IntegerField()
     punches_today = serializers.IntegerField()
     pending_justifications = serializers.IntegerField()
     new_users_chart = ChartDataSerializer(many=True)
+    recent_logs = LogAtividadeSerializer(many=True)

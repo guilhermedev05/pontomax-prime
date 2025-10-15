@@ -6,12 +6,12 @@ from django.contrib.auth.models import User
 from datetime import date
 from django.utils import timezone
 from .models import (
-    Holerite, Notificacao, RegistroPonto, Fechamento, HoleriteGerado,
+    Holerite, LogAtividade, Notificacao, RegistroPonto, Fechamento, HoleriteGerado,
     Vencimento, Desconto, VencimentoGerado, DescontoGerado
 )
 from django.db import transaction
 from itertools import groupby
-from .serializers import AdminDashboardSerializer, GestorDashboardSerializer, HoleriteSerializer, NotificacaoSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
+from .serializers import AdminDashboardSerializer, GestorDashboardSerializer, HoleriteSerializer, LogAtividadeSerializer, NotificacaoSerializer, UserSerializer, RegistroPontoSerializer, RegistroDiarioSerializer, BancoHorasSaldoSerializer, BancoHorasEquipeSerializer, AdminRegistroPontoSerializer
 # Ferramentas do Django Rest Framework
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -732,6 +732,12 @@ class JustificativaViewSet(viewsets.ModelViewSet):
             link="#registros" # Link para a página de registros do colaborador
         )
 
+        action = "RESOLVEU JUSTIFICATIVA"
+        details = (
+            f"O gestor '{request.user.get_full_name()}' resolveu a justificativa de '{justificativa.user.get_full_name()}' "
+            f"para a data {justificativa.data_ocorrencia.strftime('%d/%m/%Y')} com o status '{novo_status}'."
+        )
+        LogAtividade.objects.create(user=request.user, action_type=action, details=details)
         return Response(self.get_serializer(justificativa).data)
 
 class NotificacaoViewSet(viewsets.ReadOnlyModelViewSet):
@@ -768,14 +774,21 @@ class AdminDashboardView(APIView):
             month=Cast(TruncMonth('date_joined'), output_field=DateField())
         ).values('month').annotate(count=Count('id')).order_by('month')
 
+        recent_logs = LogAtividade.objects.all()[:5]
         # Monta o objeto de dados
         data = {
             'total_users': total_users,
             'punches_today': punches_today,
             'pending_justifications': pending_justifications,
-            'new_users_chart': new_users_chart_data
+            'new_users_chart': new_users_chart_data,
+            'recent_logs': LogAtividadeSerializer(recent_logs, many=True).data
         }
 
         # Serializa e retorna os dados
         serializer = AdminDashboardSerializer(data)
         return Response(serializer.data)
+
+class AdminLogAtividadeViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = LogAtividade.objects.all()
+    serializer_class = LogAtividadeSerializer
+    permission_classes = [IsAdminUser]

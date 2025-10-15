@@ -2,7 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    AdminDashboardView, BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, NotificacaoViewSet, RegistrosView, UserProfileView,
+    AdminDashboardView, AdminLogAtividadeViewSet, BancoHorasEquipeView, BancoHorasSaldoView, GestorDashboardView, HoleriteView, NotificacaoViewSet, RegistrosView, UserProfileView,
     UserViewSet, RegistroPontoViewSet, FechamentoViewSet,
     AdminUserViewSet, AdminFechamentoViewSet, AdminRegistroPontoViewSet, GerarRelatorioPontoPDF, GerarHoleritePDF, JustificativaViewSet  # Adicione os imports do Admin
 )
@@ -24,6 +24,7 @@ admin_router = DefaultRouter()
 admin_router.register(r'users', AdminUserViewSet, basename='admin-user')
 admin_router.register(r'fechamentos', AdminFechamentoViewSet, basename='admin-fechamento')
 admin_router.register(r'registros-ponto', AdminRegistroPontoViewSet, basename='admin-registros-ponto')
+admin_router.register(r'logs', AdminLogAtividadeViewSet, basename='admin-log')
 
 
 # --- LISTA DE URLS COMPLETA E CORRIGIDA ---

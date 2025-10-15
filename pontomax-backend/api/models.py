@@ -163,3 +163,17 @@ class Notificacao(models.Model):
 
     def __str__(self):
         return f"Notificação para {self.user.username}: {self.mensagem[:30]}..."
+
+class LogAtividade(models.Model):
+    # Quem fez a ação. Pode ser nulo se for uma ação do sistema.
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    action_type = models.CharField(max_length=50, verbose_name="Tipo da Ação")
+    details = models.TextField(verbose_name="Detalhes da Ação")
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Data e Hora")
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        user_str = self.user.username if self.user else "Sistema"
+        return f"{self.timestamp.strftime('%d/%m/%Y %H:%M')} - {user_str} - {self.action_type}"
