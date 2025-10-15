@@ -3,7 +3,7 @@
 # --- Imports ---
 # Modelos do Django e do seu app
 from django.contrib.auth.models import User
-from datetime import date
+from datetime import date, datetime
 from django.utils import timezone
 from .models import (
     Holerite, LogAtividade, Notificacao, RegistroPonto, Fechamento, HoleriteGerado,
@@ -538,20 +538,18 @@ class FechamentoViewSet(viewsets.ModelViewSet):
     def enviar_holerites(self, request, pk=None):
         fechamento = self.get_object()
 
-        # Usamos uma transação para garantir que tudo seja salvo com sucesso, ou nada é salvo.
         with transaction.atomic():
             for holerite_gerado in fechamento.holerites_gerados.all():
-                # 1. Cria ou atualiza o Holerite principal que o colaborador vê
+                # Cria ou atualiza o Holerite que o colaborador vê
                 holerite_publicado, _ = Holerite.objects.update_or_create(
                     user=holerite_gerado.user,
                     periodo=fechamento.periodo,
                 )
 
-                # 2. Limpa os vencimentos e descontos antigos para não duplicar
+                # Limpa e copia os vencimentos e descontos (lógica existente)
                 holerite_publicado.vencimentos.all().delete()
                 holerite_publicado.descontos.all().delete()
 
-                # 3. Copia os Vencimentos Gerados para os Vencimentos publicados
                 for venc in holerite_gerado.vencimentos_gerados.all():
                     Vencimento.objects.create(
                         holerite=holerite_publicado,
@@ -560,7 +558,6 @@ class FechamentoViewSet(viewsets.ModelViewSet):
                         valor=venc.valor
                     )
 
-                # 4. Copia os Descontos Gerados para os Descontos publicados
                 for desc in holerite_gerado.descontos_gerados.all():
                     Desconto.objects.create(
                         holerite=holerite_publicado,
@@ -569,11 +566,24 @@ class FechamentoViewSet(viewsets.ModelViewSet):
                         valor=desc.valor
                     )
 
-                # 5. Marca o holerite gerado como enviado
+                # Marca o holerite gerado como enviado
                 holerite_gerado.enviado = True
                 holerite_gerado.save()
 
-        return Response({'status': 'Holerites publicados com sucesso para os colaboradores.'})
+                # --- LÓGICA DE NOTIFICAÇÃO ADICIONADA ---
+                # Formata o período para um formato amigável (ex: "Outubro/2025")
+                periodo_obj = datetime.strptime(fechamento.periodo, '%Y-%m')
+                periodo_formatado = periodo_obj.strftime('%B de %Y').capitalize()
+
+                # Cria a notificação para o colaborador
+                Notificacao.objects.create(
+                    user=holerite_gerado.user,
+                    mensagem=f"Seu holerite para o período de {periodo_formatado} já está disponível.",
+                    link="#holerite"
+                )
+                # --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
+    
+    
 
 class AdminRegistroPontoViewSet(viewsets.ModelViewSet):
     """

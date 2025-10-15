@@ -103,7 +103,7 @@ class PontoMaxApp {
         const userDropdown = document.getElementById('user-dropdown');
         const notificationBell = document.getElementById('notification-bell');
         const notificationDropdown = document.getElementById('notification-dropdown');
-        
+
         const closeAllDropdowns = () => {
             if (userDropdown) userDropdown.classList.remove('show');
             if (notificationDropdown) notificationDropdown.classList.remove('show');
@@ -126,7 +126,7 @@ class PontoMaxApp {
             userDropdown.addEventListener('click', e => {
                 // Verifica se o clique foi em um link de navegação dentro do dropdown
                 const navItem = e.target.closest('.nav-item[data-page]');
-                
+
                 // Se NÃO FOI em um link de navegação, impede a propagação para não fechar o menu.
                 // Se FOI em um link, DEIXA o evento se propagar para ser capturado pelo listener de navegação.
                 if (!navItem) {
@@ -145,7 +145,7 @@ class PontoMaxApp {
                     notificationDropdown.classList.add('show');
                 }
             });
-            
+
             notificationDropdown.addEventListener('click', e => {
                 const navItem = e.target.closest('.nav-item[data-page]');
                 if (!navItem) {
@@ -358,13 +358,15 @@ class PontoMaxApp {
     handleNavigation(e, navItem) {
         e.preventDefault();
         const page = navItem.getAttribute('data-page');
+        const subPage = navItem.getAttribute('data-subpage'); // <-- Pega a sub-página
         if (page) {
-            this.navigateToPage(page);
+            // Passa a sub-página como um objeto de opções
+            this.navigateToPage(page, { subPage: subPage });
         }
     }
 
     // No seu arquivo assets/js/app.js, substitua esta função:
-    navigateToPage(page) {
+    navigateToPage(page, options = {}) {
         // --- ADICIONE ESTA LINHA DE DEPURAÇÃO ---
         console.log('--- NAVEGANDO PARA A PÁGINA:', page, '---');
         // -----------------------------------------
@@ -399,7 +401,7 @@ class PontoMaxApp {
 
         // 4. ATUALIZA O ESTADO E CARREGA OS DADOS DA PÁGINA (JÁ EXISTENTE)
         this.currentPage = page;
-        this.loadPageData(page);
+        this.loadPageData(page, options);
     }
 
     async loadJustificativasPage() {
@@ -487,7 +489,7 @@ class PontoMaxApp {
         }
     }
 
-    loadPageData(page) {
+    loadPageData(page, options = {}) {
         switch (page) {
             case 'dashboard':
                 // AQUI ESTÁ A LÓGICA PRINCIPAL QUE PRECISA SER CORRIGIDA
@@ -522,7 +524,8 @@ class PontoMaxApp {
                 this.loadBancoHorasData();
                 break;
             case 'admin':
-                this.loadAdminPage(); // Vamos criar esta função
+                // Passa a sub-página para a função que carrega o painel de admin
+                this.loadAdminPage(options.subPage);
                 break;
             case 'justificativas':
                 this.loadJustificativasPage();
@@ -1624,49 +1627,57 @@ class PontoMaxApp {
         document.getElementById('payslip-empty-state').classList.add('hidden');
     }
 
-    loadAdminPage() {
+    loadAdminPage(defaultSubPage = 'dashboard') { // <-- Aceita a sub-página padrão
         const pageContainer = document.getElementById('admin-page');
         if (!pageContainer) return;
 
         pageContainer.innerHTML = `
-            <div class="page-header">
-                <h1>Painel Administrativo</h1>
-                <p>Gerenciamento completo do sistema PontoMax.</p>
-            </div>
-            <div class="admin-layout">
-                <aside class="admin-sidebar">
-                    <nav class="admin-nav">
-                        <a href="#admin/dashboard" class="admin-nav-item active" data-admin-page="dashboard">
-                            <i data-lucide="bar-chart-3"></i>
-                            <span>Dashboard</span>
-                        </a>
-                        <a href="#admin/users" class="admin-nav-item" data-admin-page="users">
-                            <i data-lucide="users"></i>
-                            <span>Usuários</span>
-                        </a>
-                        <a href="#admin/fechamentos" class="admin-nav-item" data-admin-page="fechamentos">
-                            <i data-lucide="calendar-check"></i>
-                            <span>Fechamentos</span>
-                        </a>
-                        <a href="#admin/registros" class="admin-nav-item" data-admin-page="registros">
-                            <i data-lucide="history"></i>
-                            <span>Registros de Ponto</span>
-                        </a>
-                        <a href="#admin/logs" class="admin-nav-item" data-admin-page="logs">
-                            <i data-lucide="shield"></i>
-                            <span>Logs de Atividade</span>
-                        </a>
-                    </nav>
-                </aside>
-                <main id="admin-main-content" class="admin-main-content"></main>
-            </div>
-        `;
+        <div class="page-header">
+            <h1>Painel Administrativo</h1>
+            <p>Gerenciamento completo do sistema PontoMax.</p>
+        </div>
+        <div class="admin-layout">
+            <aside class="admin-sidebar">
+                <nav class="admin-nav">
+                    <a href="#admin/dashboard" class="admin-nav-item" data-admin-page="dashboard">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#admin/users" class="admin-nav-item" data-admin-page="users">
+                        <i data-lucide="users"></i>
+                        <span>Usuários</span>
+                    </a>
+                    <a href="#admin/fechamentos" class="admin-nav-item" data-admin-page="fechamentos">
+                        <i data-lucide="calendar-check"></i>
+                        <span>Fechamentos</span>
+                    </a>
+                    <a href="#admin/registros" class="admin-nav-item" data-admin-page="registros">
+                        <i data-lucide="history"></i>
+                        <span>Registros de Ponto</span>
+                    </a>
+                    <a href="#admin/logs" class="admin-nav-item" data-admin-page="logs">
+                        <i data-lucide="shield"></i>
+                        <span>Logs de Atividade</span>
+                    </a>
+                </nav>
+            </aside>
+            <main id="admin-main-content" class="admin-main-content"></main>
+        </div>
+    `;
+
+        // Marca o link correto como ativo
+        const activeLink = pageContainer.querySelector(`.admin-nav-item[data-admin-page="${defaultSubPage}"]`);
+        if (activeLink) {
+            pageContainer.querySelectorAll('.admin-nav-item').forEach(i => i.classList.remove('active'));
+            activeLink.classList.add('active');
+        }
+
         lucide.createIcons();
 
-        // 2. Carrega a sub-página 'dashboard' por padrão
-        this.loadAdminSubPage('dashboard');
+        // Carrega a sub-página correta (seja a padrão 'dashboard' ou a que veio do link, ex: 'logs')
+        this.loadAdminSubPage(defaultSubPage);
 
-        // Adiciona eventos de clique para a navegação do admin
+        // Adiciona eventos de clique para a navegação interna do admin
         pageContainer.querySelectorAll('.admin-nav-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -2267,7 +2278,7 @@ class PontoMaxApp {
                     `).join('')}
                 </ul>
                 <div class="card-footer">
-                    <a href="#admin/logs" class="btn-outline nav-item" data-page="admin-logs-redirect">Ver todos os logs...</a>
+                    <a href="#admin/logs" class="btn-outline nav-item" data-page="admin" data-subpage="logs">Ver todos os logs...</a>
                 </div>
             </div>
         </div>
