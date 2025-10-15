@@ -1618,47 +1618,58 @@ class PontoMaxApp {
 
     async renderAdminUserTable(container) {
         try {
-            // Usa o novo endpoint de admin que criamos
             const users = await window.authManager.apiCall('/admin/users/');
 
-            // Cria o HTML da tabela
             let tableHTML = `
-        <div class="main-card">
-            <div class="card-header-flex">
-                <h2>Todos os Usuários</h2>
-                <button class="btn-primary" id="admin-add-user-btn"><i data-lucide="plus"></i> Adicionar Usuário</button>
-            </div>
-            <div class="table-wrapper">
-                <table class="team-list-table">
-                    <thead><tr><th>Nome</th><th>E-mail</th><th>Cargo</th><th>Ações</th></tr></thead>
-                    <tbody>
-                        ${users.map(user => `
+            <div class="main-card">
+                <div class="card-header-flex">
+                    <h2>Todos os Usuários</h2>
+                    <button class="btn-primary" id="admin-add-user-btn"><i data-lucide="plus"></i> Adicionar Usuário</button>
+                </div>
+
+                <div class="bulk-action-bar hidden" id="bulk-action-bar">
+                    <span id="bulk-action-count">0 selecionados</span>
+                    <div class="bulk-actions">
+                        <select id="bulk-action-role-select" class="form-select">
+                            <option value="COLABORADOR">Colaborador</option>
+                            <option value="GESTOR">Gestor</option>
+                            <option value="ADMIN">Admin</option>
+                        </select>
+                        <button class="btn-secondary" id="bulk-action-change-role">Alterar Cargo</button>
+                        <button class="btn-danger" id="bulk-action-delete">Deletar Selecionados</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="team-list-table">
+                        <thead>
                             <tr>
-                                <td>${user.nome}</td>
-                                <td>${user.email}</td>
-                                <td><span class="user-role">${user.profile.perfil}</span></td>
-                                <td><button class="btn-outline" data-employee-id="${user.id}">Editar</button></td>
+                                <th><input type="checkbox" id="select-all-users"></th>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Cargo</th>
+                                <th>Ações</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>`;
+                        </thead>
+                        <tbody>
+                            ${users.map(user => `
+                                <tr>
+                                    <td><input type="checkbox" class="user-checkbox" data-user-id="${user.id}"></td>
+                                    <td>${user.nome}</td>
+                                    <td>${user.email}</td>
+                                    <td><span class="user-role">${user.profile.perfil}</span></td>
+                                    <td><button class="btn-outline" data-employee-id="${user.id}">Editar</button></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
             container.innerHTML = tableHTML;
             lucide.createIcons();
 
-            // Adiciona eventos aos botões "Editar" e "Adicionar"
-            container.querySelector('#admin-add-user-btn').addEventListener('click', () => {
-                // Reutilizamos o modal de registro que já existe!
-                this.openRegisterModal(true); // Passamos 'true' para indicar que é um admin
-            });
-            container.querySelectorAll('.btn-outline').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const userId = e.currentTarget.dataset.employeeId;
-                    // Reutilizamos o modal de edição que já existe!
-                    this.openEmployeeModal(userId, true); // Passamos 'true' para indicar que é um admin
-                });
-            });
+            // Chamamos uma nova função para configurar os eventos da tabela
+            this.setupAdminUserTableEvents(container);
 
         } catch (error) {
             container.innerHTML = '<h2>Erro ao carregar usuários.</h2>';
@@ -2222,6 +2233,79 @@ class PontoMaxApp {
             container.innerHTML = tableHTML;
         } catch (error) {
             container.innerHTML = `<h2>Erro ao carregar logs.</h2>`;
+        }
+    }
+
+    setupAdminUserTableEvents(container) {
+        const selectedUserIds = new Set();
+        const selectAllCheckbox = container.querySelector('#select-all-users');
+        const userCheckboxes = container.querySelectorAll('.user-checkbox');
+        const actionBar = container.querySelector('#bulk-action-bar');
+        const actionCount = container.querySelector('#bulk-action-count');
+        const changeRoleBtn = container.querySelector('#bulk-action-change-role');
+        const deleteBtn = container.querySelector('#bulk-action-delete');
+
+        const updateActionBar = () => {
+            if (selectedUserIds.size > 0) {
+                actionBar.classList.remove('hidden');
+                actionCount.textContent = `${selectedUserIds.size} selecionado(s)`;
+            } else {
+                actionBar.classList.add('hidden');
+            }
+        };
+
+        selectAllCheckbox.addEventListener('change', (e) => {
+            userCheckboxes.forEach(checkbox => {
+                checkbox.checked = e.target.checked;
+                const userId = parseInt(checkbox.dataset.userId);
+                e.target.checked ? selectedUserIds.add(userId) : selectedUserIds.delete(userId);
+            });
+            updateActionBar();
+        });
+
+        userCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const userId = parseInt(e.target.dataset.userId);
+                e.target.checked ? selectedUserIds.add(userId) : selectedUserIds.delete(userId);
+                updateActionBar();
+            });
+        });
+
+        changeRoleBtn.addEventListener('click', () => {
+            const newRole = container.querySelector('#bulk-action-role-select').value;
+            this.handleBulkAction({
+                action_type: 'change_role_selected',
+                user_ids: Array.from(selectedUserIds),
+                new_role: newRole
+            });
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            if (confirm(`Tem certeza que deseja deletar ${selectedUserIds.size} usuário(s)?`)) {
+                this.handleBulkAction({
+                    action_type: 'delete_selected',
+                    user_ids: Array.from(selectedUserIds)
+                });
+            }
+        });
+
+        // Eventos de abrir modais (código que já tínhamos)
+        container.querySelector('#admin-add-user-btn').addEventListener('click', () => this.openRegisterModal(true));
+        container.querySelectorAll('.btn-outline').forEach(button => {
+            button.addEventListener('click', (e) => this.openEmployeeModal(e.currentTarget.dataset.employeeId, true));
+        });
+    }
+
+    async handleBulkAction(payload) {
+        try {
+            await window.authManager.apiCall('/admin/users/bulk-action/', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            this.showToast('Sucesso', 'Ação em massa executada com sucesso!', 'success');
+            this.loadAdminSubPage('users'); // Recarrega a tabela
+        } catch (error) {
+            this.showToast('Erro', 'Não foi possível executar a ação em massa.', 'error');
         }
     }
 }

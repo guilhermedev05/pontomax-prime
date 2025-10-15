@@ -7,7 +7,7 @@ from datetime import date
 from django.utils import timezone
 from .models import (
     Holerite, LogAtividade, Notificacao, RegistroPonto, Fechamento, HoleriteGerado,
-    Vencimento, Desconto, VencimentoGerado, DescontoGerado
+    Vencimento, Desconto, VencimentoGerado, DescontoGerado, Profile
 )
 from django.db import transaction
 from itertools import groupby
@@ -131,6 +131,48 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         return self.queryset.exclude(pk=user.pk)
+    
+    @action(detail=False, methods=['post'], url_path='bulk-action')
+    def bulk_action(self, request): 
+        user_ids = request.data.get('user_ids', [])
+        action_type = request.data.get('action_type')
+
+        if not user_ids or not action_type:
+            print("ERRO: Faltando user_ids ou action_type.")
+            return Response({'error': 'IDs dos usuários e o tipo de ação são obrigatórios.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = self.get_queryset().filter(pk__in=user_ids)
+        
+        log_details = ""
+
+        if action_type == 'delete_selected':
+            count, _ = queryset.delete()
+            log_details = f"Deletou {count} usuários em massa. IDs: {user_ids}"
+
+        elif action_type == 'change_role_selected':
+            new_role = request.data.get('new_role')
+            if not new_role:
+                print("ERRO: Faltando new_role.")
+                return Response({'error': 'Novo cargo é obrigatório para esta ação.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Vamos verificar quais perfis são encontrados ANTES de atualizar
+            profiles_to_update = Profile.objects.filter(user__in=queryset)
+            
+            profiles_updated_count = profiles_to_update.update(perfil=new_role)
+            
+            log_details = f"Alterou o cargo de {profiles_updated_count} usuários para '{new_role}'. IDs: {user_ids}"
+        
+        else:
+            print(f"ERRO: Ação '{action_type}' desconhecida.")
+            return Response({'error': 'Ação desconhecida.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Registra a ação no log de atividades
+        LogAtividade.objects.create(
+            user=request.user,
+            action_type="AÇÃO EM MASSA",
+            details=log_details
+        )
+        return Response({'status': 'Ação em massa concluída com sucesso.'})
 
 
 # 3. Adicione ViewSets para outros modelos que você queira gerenciar
