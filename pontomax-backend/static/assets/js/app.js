@@ -1208,7 +1208,7 @@ class PontoMaxApp {
         `;
         } else {
             // Se não, voltamos ao input readonly
-            roleInput.value = 'Colaborador';
+            roleInput.value = 'COLABORADOR';
             roleInput.readOnly = true;
         }
 
@@ -2186,7 +2186,7 @@ class PontoMaxApp {
         // A lógica de clique foi movida para setupEventListeners.
         // A única responsabilidade desta função agora é iniciar a busca por notificações.
         this.fetchNotifications(); // Verifica ao carregar
-        setInterval(() => this.fetchNotifications(), 60000); // Verifica a cada 60 segundos
+        setInterval(() => this.fetchNotifications(), 1000); // Verifica a cada 60 segundos
     }
 
     async fetchNotifications() {
@@ -2206,7 +2206,7 @@ class PontoMaxApp {
 
         if (notifications.length > 0) {
             badge.classList.remove('hidden');
-            badge.textContent = notifications.length > 9 ? '9+' : notifications.length;
+            // badge.textContent = notifications.length > 9 ? '9+' : notifications.length;
             list.innerHTML = notifications.map(n => `
                 <a href="${n.link || '#'}" class="notification-item" data-page="${n.link?.substring(1)}" data-notification-id="${n.id}">
                     ${n.mensagem}
