@@ -333,11 +333,6 @@ body {
     transition: all 0.2s;
 }
 
-.nav-item:hover {
-    color: var(--foreground);
-    background: hsl(215, 28%, 17%, 0.05);
-}
-
 .nav-item.active {
     color: var(--primary);
     background: hsl(217, 91%, 60%, 0.1);
@@ -348,6 +343,9 @@ body {
     height: 1rem;
 }
 
+.nav-item .summary-card{
+    width: 100%;
+}
 /* User Menu */
 .user-menu {
     position: relative;

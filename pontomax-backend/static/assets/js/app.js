@@ -850,10 +850,6 @@ class PontoMaxApp {
                     </div>
                 </a>
                 <div class="summary-card">
-                    <div class="card-content"><div class="value">${gestorData.stats.aniversariantes}</div><div class="label">Aniversariantes</div></div>
-                    <i data-lucide="calendar" class="card-icon"></i>
-                </div>
-                <div class="summary-card">
                     <div class="card-content"><div class="value success">${gestorData.stats.ativos}</div><div class="label">Ativos hoje</div></div>
                     <i data-lucide="user-check" class="card-icon success"></i>
                 </div>
@@ -1551,60 +1547,49 @@ class PontoMaxApp {
         const downloadButton = document.getElementById('btn-download-payslip');
 
         if (!periodSelector || !viewButton || !downloadButton) return;
-
-        // Limpa opções antigas
-        periodSelector.innerHTML = '';
-
-        // Lógica para popular os últimos 12 meses, com o mês anterior como padrão
-        const today = new Date();
-        today.setDate(1); // Garante que estamos no início do mês para evitar problemas
-
-        for (let i = 1; i < 13; i++) {
-            const date = new Date(today);
-            date.setMonth(today.getMonth() - i);
-
-            const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const value = `${year}-${month}`;
-
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
-
-            // Define o mês anterior como o selecionado por padrão
-            if (i === 1) {
-                option.selected = true;
+        console.log("Populou")
+        
+        // Popula o seletor de datas (esta parte continua a mesma)
+        if (periodSelector.options.length <= 1) { // Preenche apenas se estiver vazio
+            const today = new Date();
+            today.setDate(1);
+            for (let i = 1; i < 13; i++) {
+                const date = new Date(today);
+                date.setMonth(today.getMonth() - i);
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const value = `${year}-${month}`;
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
+                if (i === 1) option.selected = true;
+                periodSelector.appendChild(option);
             }
-
-            periodSelector.appendChild(option);
         }
 
-        // Anexa o evento de clique ao botão, que chamará a função para carregar os dados
+        // Configura o botão de visualizar
         viewButton.onclick = () => this.loadHoleriteData();
 
-        downloadButton.addEventListener('click', async () => {
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Trocamos addEventListener por .onclick para evitar a duplicação de eventos
+        downloadButton.onclick = async () => {
             try {
                 const selectedPeriod = periodSelector.value;
                 if (!selectedPeriod) {
                     this.showToast('Aviso', 'Selecione um período para gerar o PDF.', 'warning');
                     return;
                 }
-
                 this.showToast('Aguarde', 'Gerando seu holerite em PDF...', 'info');
-
                 const urlPath = `/holerites/exportar_pdf/?periodo=${selectedPeriod}`;
                 const response = await window.authManager.apiCall(urlPath);
-
                 if (!response.ok) throw new Error('Falha ao gerar o PDF.');
-
                 const blob = await response.blob();
                 const disposition = response.headers.get('content-disposition');
                 let filename = `holerite_${selectedPeriod}.pdf`;
                 if (disposition && disposition.includes('attachment')) {
                     const filenameMatch = disposition.match(/filename="(.+)"/);
-                    if (filenameMatch.length > 1) filename = filenameMatch[1];
+                    if (filenameMatch && filenameMatch.length > 1) filename = filenameMatch[1];
                 }
-
                 const downloadUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.style.display = 'none';
@@ -1612,15 +1597,14 @@ class PontoMaxApp {
                 a.download = filename;
                 document.body.appendChild(a);
                 a.click();
-
                 window.URL.revokeObjectURL(downloadUrl);
                 a.remove();
-
             } catch (error) {
                 console.error("Erro ao baixar PDF do holerite:", error);
                 this.showToast('Erro', 'Não foi possível baixar o holerite. Verifique se ele já foi visualizado na tela.', 'error');
             }
-        });
+        };
+        // --- FIM DA CORREÇÃO ---
 
         // Garante que o estado inicial da página está limpo
         document.getElementById('payslip-content-wrapper').classList.add('hidden');

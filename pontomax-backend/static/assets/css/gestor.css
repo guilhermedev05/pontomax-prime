@@ -3,7 +3,7 @@
 /* Grid dos cards de resumo superior */
 .summary-cards-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
     margin-bottom: 1.5rem;
 }
@@ -667,6 +667,7 @@
 .sidebar-overlay.is-open { opacity: 1; visibility: visible; }
 a.summary-card-link {
     text-decoration: none;
+    padding: 0;
 }
 /* Animação que faz a barra encolher da direita para a esquerda */
 @keyframes shrink {
