@@ -4,26 +4,29 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import LogAtividade, RegistroPonto
 
-# Este "signal" é disparado DEPOIS que um usuário é salvo (criado ou atualizado)
 @receiver(post_save, sender=User)
 def log_user_change(sender, instance, created, **kwargs):
-    # Ação de 'request' para saber quem fez a alteração é mais complexa.
-    # Por enquanto, vamos registrar a ação sem o autor direto.
-    if created:
-        action = "CRIOU USUÁRIO"
-        details = f"O usuário '{instance.username}' foi criado."
-    else:
-        action = "ATUALIZOU USUÁRIO"
-        details = f"Os dados do usuário '{instance.username}' foram atualizados."
+    # Verifica se a função foi chamada de dentro da nossa 'bulk_action'
+    # Esta é uma forma simples de tentar evitar logs duplicados
+    is_bulk_action = any('bulk_action' in frame.function for frame in inspect.stack())
+    
+    if not is_bulk_action: # Só cria o log se NÃO for uma ação em massa
+        if created:
+            action = "CRIOU USUÁRIO"
+            details = f"O usuário '{instance.username}' foi criado."
+        else:
+            action = "ATUALIZOU USUÁRIO"
+            details = f"Os dados do usuário '{instance.username}' foram atualizados."
+        LogAtividade.objects.create(action_type=action, details=details)
 
-    LogAtividade.objects.create(action_type=action, details=details)
-
-# Este "signal" é disparado DEPOIS que um usuário é deletado
 @receiver(post_delete, sender=User)
 def log_user_deletion(sender, instance, **kwargs):
-    action = "DELETOU USUÁRIO"
-    details = f"O usuário '{instance.username}' (ID: {instance.id}) foi removido do sistema."
-    LogAtividade.objects.create(action_type=action, details=details)
+    is_bulk_action = any('bulk_action' in frame.function for frame in inspect.stack())
+
+    if not is_bulk_action: # Só cria o log se NÃO for uma ação em massa
+        action = "DELETOU USUÁRIO"
+        details = f"O usuário '{instance.username}' (ID: {instance.id}) foi removido."
+        LogAtividade.objects.create(action_type=action, details=details)
     
 @receiver(post_save, sender=RegistroPonto)
 def log_registroponto_change(sender, instance, created, **kwargs):

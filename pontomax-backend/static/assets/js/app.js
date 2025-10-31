@@ -1631,14 +1631,6 @@ class PontoMaxApp {
                         <i data-lucide="users"></i>
                         <span>Usuários</span>
                     </a>
-                    <a href="#admin/fechamentos" class="admin-nav-item" data-admin-page="fechamentos">
-                        <i data-lucide="calendar-check"></i>
-                        <span>Fechamentos</span>
-                    </a>
-                    <a href="#admin/registros" class="admin-nav-item" data-admin-page="registros">
-                        <i data-lucide="history"></i>
-                        <span>Registros de Ponto</span>
-                    </a>
                     <a href="#admin/logs" class="admin-nav-item" data-admin-page="logs">
                         <i data-lucide="shield"></i>
                         <span>Logs de Atividade</span>
