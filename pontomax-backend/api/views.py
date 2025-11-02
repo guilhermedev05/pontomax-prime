@@ -381,67 +381,36 @@ class GestorDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        equipe = User.objects.exclude(pk=request.user.pk).exclude(is_staff=True)
-        hoje = date.today()
+        # Métrica 1: Total de usuários (excluindo superusuários)
+        total_users = User.objects.filter(is_superuser=False).count()
+
+        # Métrica 2: Batidas de ponto hoje
+        today = timezone.now().date()
+        punches_today = RegistroPonto.objects.filter(timestamp__date=today).count()
+
+        # Métrica 3: Justificativas pendentes
+        pending_justifications = Justificativa.objects.filter(status='PENDENTE').count()
         
-        # --- Cálculo do Status da Equipe ---
-        team_status_list = []
-        usuarios_ativos_hoje = 0
+        # Métrica 4: Dados para o gráfico de novos usuários por mês
+        new_users_chart_data = User.objects.annotate(
+            month=Cast(TruncMonth('date_joined'), output_field=DateField())
+        ).values('month').annotate(count=Count('id')).order_by('month')
+
+        # Métrica 5: Logs recentes (agora como objetos puros)
+        recent_logs = LogAtividade.objects.all()[:5]
         
-        for funcionario in equipe:
-            # Pega os registros de hoje
-            punches_today = RegistroPonto.objects.filter(user=funcionario, timestamp__date=hoje)
-            last_punch = punches_today.last()
-            
-            punches_list = list(punches_today)
-            worked_seconds_today = 0
-            if len(punches_list) >= 1 and punches_list[0].tipo == 'entrada':
-                 # Se o último registro foi uma saída, calcula o período fechado.
-                 # Se foi uma entrada, calcula até o momento atual.
-                end_time = punches_list[-1].timestamp if punches_list[-1].tipo == 'saida' else timezone.now()
-                worked_seconds_today = (end_time - punches_list[0].timestamp).total_seconds()
-
-            worked_hours_today = worked_seconds_today / 3600
-            
-            # Define o status (lógica simplificada)
-            status = "Ausente"
-            if last_punch:
-                usuarios_ativos_hoje += 1
-                if last_punch.tipo == 'entrada':
-                    status = "Trabalhando"
-                elif last_punch.tipo == 'saida':
-                    status = "Finalizado"
-
-            team_status_list.append({
-                'name': funcionario.get_full_name(),
-                'initials': "".join([n[0] for n in funcionario.get_full_name().split()]),
-                'status': status,
-                'lastPunch': timezone.localtime(last_punch.timestamp).strftime('%H:%M') if last_punch else '--:--',
-                'hoursToday': f"{int(worked_hours_today):02d}:{int((worked_hours_today*60)%60):02d}"
-            })
-
-        
-        # --- Cálculo dos Cards de Estatísticas ---
-        equipe_colaboradores = equipe.filter(profile__perfil='COLABORADOR')
-        pendentes_count = Justificativa.objects.filter(status='PENDENTE', user__in=equipe_colaboradores).count()
-
-        stats_data = {
-            'pendentes': pendentes_count, # <-- O VALOR AGORA É DINÂMICO
-            'aniversariantes': 0, # Exemplo
-            'ativos': usuarios_ativos_hoje,
-            'ausentes': equipe.count() - usuarios_ativos_hoje
+        # Monta o objeto de dados
+        data = {
+            'total_users': total_users,
+            'punches_today': punches_today,
+            'pending_justifications': pending_justifications,
+            'new_users_chart': new_users_chart_data,
+            'recent_logs': recent_logs  # <-- CORREÇÃO: Passamos os objetos, não os .data
         }
 
-        # --- Monta o objeto final ---
-        dashboard_data = {
-            'gestorName': request.user.first_name,
-            'stats': stats_data,
-            'teamStatus': team_status_list
-        }
-
-        serializer = GestorDashboardSerializer(instance=dashboard_data)
+        # Serializa e retorna os dados
+        serializer = AdminDashboardSerializer(data)
         return Response(serializer.data)
-
 class FechamentoViewSet(viewsets.ModelViewSet):
     queryset = Fechamento.objects.all().order_by('-periodo')
     serializer_class = FechamentoSerializer
@@ -827,14 +796,16 @@ class AdminDashboardView(APIView):
             month=Cast(TruncMonth('date_joined'), output_field=DateField())
         ).values('month').annotate(count=Count('id')).order_by('month')
 
+        # Métrica 5: Logs recentes (agora como objetos puros)
         recent_logs = LogAtividade.objects.all()[:5]
+        
         # Monta o objeto de dados
         data = {
             'total_users': total_users,
             'punches_today': punches_today,
             'pending_justifications': pending_justifications,
             'new_users_chart': new_users_chart_data,
-            'recent_logs': LogAtividadeSerializer(recent_logs, many=True).data
+            'recent_logs': recent_logs  # <-- CORREÇÃO: Passamos os objetos, não os .data
         }
 
         # Serializa e retorna os dados

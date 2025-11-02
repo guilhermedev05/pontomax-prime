@@ -141,16 +141,17 @@ class AuthManager {
         const hamburgerBtn = document.getElementById('hamburger-btn');
         const navHorizontal = document.getElementById('nav-menu-horizontal');
         const sidebarNavContainer = document.getElementById('sidebar-nav-links');
-        
+        const userInitials = document.getElementById("user-initials")
+        const notificationsBell = document.getElementById("notification-bell")
         // Clona os links do menu horizontal para não perdê-los
         const allNavLinks = Array.from(navHorizontal.querySelectorAll('.nav-item'));
 
         if (userRole === 'ADMIN') {
             // LÓGICA PARA O ADMIN
-            hamburgerBtn.classList.remove('hidden');
             navHorizontal.classList.add('hidden'); // Esconde o menu horizontal
             sidebarNavContainer.innerHTML = ''; // Limpa o menu lateral
-
+            userInitials.innerHTML = 'A'
+            notificationsBell.classList.add('hidden')
             // Filtra e adiciona os links permitidos ao menu lateral
             allNavLinks.forEach(link => {
                 const page = link.dataset.page;

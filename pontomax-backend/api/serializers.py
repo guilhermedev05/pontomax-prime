@@ -137,19 +137,6 @@ class RegistroPontoSerializer(serializers.ModelSerializer):
         model = RegistroPonto
         fields = ['id', 'time', 'tipo']
         read_only_fields = ['tipo']
-
-class RegistroDiarioSerializer(serializers.Serializer):
-    """
-    Serializer para o resumo de um dia de trabalho, com dados calculados.
-    """
-    date = serializers.DateField()
-    worked = serializers.FloatField()
-    overtime = serializers.FloatField()
-    debit = serializers.FloatField()
-    status = serializers.CharField()
-
-    class Meta:
-        fields = ['date', 'worked', 'overtime', 'debit', 'status']
         
 class BancoHorasSaldoSerializer(serializers.Serializer):
     """
@@ -258,10 +245,20 @@ class ChartDataSerializer(serializers.Serializer):
     count = serializers.IntegerField()
 
 class LogAtividadeSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.get_full_name', read_only=True, default='Sistema')
+    user_name = serializers.SerializerMethodField() # <-- Mudamos para um SerializerMethodField
+
     class Meta:
         model = LogAtividade
         fields = ['id', 'user_name', 'action_type', 'details', 'timestamp']
+
+    def get_user_name(self, obj):
+        # Esta função customizada busca o nome do usuário
+        if obj.user:
+            name = obj.user.get_full_name()
+            # Se o nome completo estiver em branco, usa o username (email) como fallback
+            return name if name else obj.user.username
+        # Se o log não tiver usuário (null=True), retorna "Sistema"
+        return "Sistema"
         
 class AdminDashboardSerializer(serializers.Serializer):
     total_users = serializers.IntegerField()
