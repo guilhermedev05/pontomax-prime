@@ -292,20 +292,26 @@ class PontoMaxApp {
     }
 
     checkAuthentication() {
-        // Simular carregamento inicial
         setTimeout(() => {
             if (window.authManager.isLoggedIn()) {
                 window.authManager.showMainApp();
                 const user = window.authManager.getCurrentUser();
-                if (user && user.profile.perfil === 'ADMIN') {
-                    this.navigateToPage('admin'); // Direciona para o painel de admin
+
+                // --- LÓGICA DE DIRECIONAMENTO ATUALIZADA ---
+                if (user && user.profile.must_change_password) {
+                    this.navigateToPage('perfil');
+                    this.showToast('Aviso de Segurança', 'Por favor, altere sua senha provisória.', 'warning');
+                } else if (user && user.profile.perfil === 'ADMIN') {
+                    this.navigateToPage('admin');
                 } else {
-                    this.navigateToPage('dashboard'); // Direciona para o dashboard normal
+                    this.navigateToPage('dashboard');
                 }
+                // --- FIM DA LÓGICA ---
+
             } else {
                 window.authManager.showLoginPage();
             }
-        }, 1500);
+        }, 1500); // O delay continua o mesmo
     }
 
     async handleLogin(e) {
@@ -328,10 +334,13 @@ class PontoMaxApp {
                 window.authManager.showMainApp();
                 // DEPOIS:
                 const user = window.authManager.getCurrentUser();
-                if (user && user.profile.perfil === 'ADMIN') {
-                    this.navigateToPage('admin'); // Direciona para o painel de admin
+                if (user && user.profile.must_change_password) {
+                    this.navigateToPage('perfil');
+                    this.showToast('Aviso de Segurança', 'Por favor, altere sua senha provisória.', 'warning');
+                } else if (user && user.profile.perfil === 'ADMIN') {
+                    this.navigateToPage('admin');
                 } else {
-                    this.navigateToPage('dashboard'); // Direciona para o dashboard normal
+                    this.navigateToPage('dashboard');
                 }
             } else {
                 this.showToast('Erro', result.error || 'Credenciais inválidas', 'error');
@@ -552,8 +561,65 @@ class PontoMaxApp {
         const periodInput = document.getElementById('period-filter');
         const searchBtn = document.getElementById('search-btn');
         const downloadBtn = document.getElementById('btn-download-pdf');
+        const recordsList = document.getElementById('records-table-body');
+
+        
+        const formatDateForAPI = (date) => date.toISOString().split('T')[0];
 
         if (!periodInput || !searchBtn) return;
+
+        const renderTableAndSummary = (recordsToRender) => {
+            recordsList.innerHTML = '';
+            let totalWorked = 0, totalOvertime = 0, totalDebit = 0;
+
+            const tableHeader = recordsList.parentElement.querySelector('thead tr');
+            if (tableHeader) {
+                tableHeader.innerHTML = `
+                    <th>Data</th>
+                    <th>Total Trabalhado</th>
+                    <th>Horas Extras</th>
+                    <th>Débito</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                `;
+            }
+
+            if (!recordsToRender || recordsToRender.length === 0) {
+                recordsList.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;">Nenhum registro encontrado para este período.</td></tr>';
+            } else {
+                recordsToRender.forEach(record => {
+                    const date = new Date(record.date + 'T03:00:00'); // Ajuste de fuso horário local
+                    totalWorked += record.worked;
+                    totalOvertime += record.overtime;
+                    totalDebit += record.debit;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div class="date-cell">
+                                <span class="day-of-week">${date.toLocaleDateString('pt-BR', { weekday: 'long' }).replace("-feira", "")}</span>
+                                <span class="full-date">${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                            </div>
+                        </td>
+                        <td>${this.formatHours(record.worked, true)}</td>
+                        <td class="positive">${this.formatHours(record.overtime, true)}</td>
+                        <td class="negative">${this.formatHours(record.debit, true)}</td>
+                        <td><span class="status-badge status-${record.status.toLowerCase()}">${record.status}</span></td>
+                        <td>
+                            ${record.justificativa_status ?
+                                `<button class="btn-secondary" onclick="window.pontoMaxApp.openViewJustificativaModal('${record.justificativa_status}', '${record.justificativa_motivo.replace(/'/g, "\\'").replace(/"/g, '\\"')}','${record.date}')">Visualizar</button>` :
+                            (record.debit > 0 ? 
+                                `<button class="btn-outline" onclick="window.pontoMaxApp.openJustificativaModal('${record.date}')">Justificar</button>`
+                                : '')
+                            }
+                        </td>
+                    `;
+                    recordsList.appendChild(row);
+                });
+            }
+            document.getElementById('summary-total-worked').textContent = this.formatHours(totalWorked, true);
+            document.getElementById('summary-overtime').textContent = `+${this.formatHours(totalOvertime, true)}`;
+            document.getElementById('summary-debit').textContent = `-${this.formatHours(totalDebit, true)}`;
+        };
 
         // Inicializa o calendário e guarda a instância em 'this' para ser acessível por outras funções
         this.registrosFlatpickr = flatpickr(periodInput, {
@@ -565,6 +631,8 @@ class PontoMaxApp {
         });
 
         searchBtn.addEventListener('click', () => this.fetchRegistrosData());
+
+        
 
         const fetchAndRenderRecords = async () => {
             const dates = fp.selectedDates;
@@ -1135,33 +1203,28 @@ class PontoMaxApp {
     // Em app.js, adicione estas duas novas funções à classe PontoMaxApp
     async openEmployeeModal(employeeId, isAdmin = false) {
         const modal = document.getElementById('employee-modal');
-        // Guardamos o ID no próprio elemento do modal para fácil acesso
         modal.dataset.employeeId = employeeId;
+        modal.dataset.isAdmin = isAdmin; // <-- 1. Guarda o status de admin no modal
+
+        // 2. Busca o container dos campos financeiros
+        const financialInfo = document.getElementById('edit-financial-info');
+
         try {
             const employee = await window.authManager.apiCall(`/equipe/${employeeId}/`);
             if (!employee) return;
 
-            // Popula o modal com os dados vindos do backend
+            // Popula os campos básicos
             document.getElementById('modal-fullname').value = employee.nome;
             document.getElementById('modal-email').value = employee.email;
-            // MUDANÇA: Acessando o perfil dentro do objeto 'profile'
-            document.getElementById('modal-role').value = employee.profile.perfil;
             document.getElementById('modal-initials').textContent = employee.nome.split(' ').map(n => n[0]).join('');
-
-            // MUDANÇA: Acessando os campos dentro do objeto 'profile'
-            document.getElementById('modal-salary').value =
-                parseFloat(employee.profile.salario_base || 0).toFixed(2).replace('.', ',');
-
-            document.getElementById('modal-monthly-hours').value =
-                employee.profile.horas_mensais || 0;
-
-            // O valor da hora já está no nível principal, então continua igual
-            document.getElementById('modal-hourly-rate').value =
-                parseFloat(employee.valor_hora || 0).toFixed(2).replace('.', ',');
 
             const roleFieldContainer = document.getElementById('modal-role').parentElement;
 
             if (isAdmin) {
+                // Se for ADMIN
+                financialInfo.classList.add('hidden'); // <-- 3. ESCONDE os campos financeiros
+
+                // Admin pode editar o cargo
                 roleFieldContainer.innerHTML = `
                 <label for="modal-role">Cargo</label>
                 <select id="modal-role" class="form-select">
@@ -1172,8 +1235,22 @@ class PontoMaxApp {
             `;
                 document.getElementById('modal-role').value = employee.profile.perfil;
             } else {
+                // Se for GESTOR
+                financialInfo.classList.remove('hidden'); // <-- 4. MOSTRA os campos financeiros
+
+                // Gestor não pode editar o cargo (apenas visualizar)
+                roleFieldContainer.innerHTML = `
+                <label for="modal-role">Cargo</label>
+                <input type="text" id="modal-role" class="form-input" readonly />
+            `;
                 document.getElementById('modal-role').value = employee.profile.perfil;
+
+                // Popula os campos financeiros
+                document.getElementById('modal-salary').value = parseFloat(employee.profile.salario_base || 0).toFixed(2).replace('.', ',');
+                document.getElementById('modal-monthly-hours').value = employee.profile.horas_mensais || 0;
+                document.getElementById('modal-hourly-rate').value = parseFloat(employee.valor_hora || 0).toFixed(2).replace('.', ',');
             }
+
             modal.classList.remove('hidden');
         } catch (error) {
             console.error("Erro ao buscar detalhes do funcionário:", error);
@@ -1190,9 +1267,10 @@ class PontoMaxApp {
         if (form) form.reset();
 
         const roleInput = document.getElementById('register-role');
+        const financialInfo = document.getElementById('register-financial-info'); // 1. Busque o div
 
         if (isAdmin) {
-            // Se for admin, criamos um <select>
+            // Admin pode selecionar o cargo
             const parent = roleInput.parentElement;
             parent.innerHTML = `
             <label for="register-role">Cargo</label>
@@ -1202,10 +1280,12 @@ class PontoMaxApp {
                 <option value="ADMIN">Admin</option>
             </select>
         `;
+            financialInfo.classList.add('hidden'); // 2. Esconde os campos financeiros
         } else {
-            // Se não, voltamos ao input readonly
+            // Gestor só cadastra Colaborador
             roleInput.value = 'COLABORADOR';
             roleInput.readOnly = true;
+            financialInfo.classList.remove('hidden'); // 3. Mostra os campos financeiros
         }
 
         document.getElementById('register-employee-modal').classList.remove('hidden');
@@ -1475,32 +1555,38 @@ class PontoMaxApp {
     }
 
     async handleUpdateEmployee(employeeId) {
-        // 1. Lemos e limpamos os dados dos campos
+        // 1. Lê o status que guardamos no modal
+        const modal = document.getElementById('employee-modal');
+        const isAdmin = modal.dataset.isAdmin === 'true';
+
+        // 2. Lê os campos básicos
         const fullname = document.getElementById('modal-fullname').value.trim();
         const email = document.getElementById('modal-email').value.trim();
-        const perfil = document.getElementById('modal-role').value.trim(); // 'perfil' é o cargo
-        const salarioStr = document.getElementById('modal-salary').value.replace(',', '.');
-        const horasStr = document.getElementById('modal-monthly-hours').value;
+        const perfil = document.getElementById('modal-role').value.trim();
 
-        // 2. VALIDAÇÃO: Verificamos se os campos obrigatórios não estão vazios
         if (!fullname || !email || !perfil) {
             this.showToast('Erro de Validação', 'Nome, e-mail e cargo são obrigatórios.', 'error');
-            return; // Impede o envio da requisição
+            return;
         }
 
-        // 3. Montamos o payload para enviar
+        // 3. Monta o payload inicial
         const payload = {
             first_name: fullname.split(' ')[0] || '',
             last_name: fullname.split(' ').slice(1).join(' '),
             email: email,
             profile: {
-                perfil: perfil,
-                salario_base: salarioStr ? parseFloat(salarioStr) : null,
-                horas_mensais: horasStr ? parseInt(horasStr) : null
+                perfil: perfil
             }
         };
 
-        // 4. O bloco try/catch para enviar para a API continua o mesmo
+        // 4. Só adiciona os dados financeiros se NÃO FOR ADMIN
+        if (!isAdmin) {
+            const salarioStr = document.getElementById('modal-salary').value.replace(',', '.');
+            const horasStr = document.getElementById('modal-monthly-hours').value;
+            payload.profile.salario_base = salarioStr ? parseFloat(salarioStr) : null;
+            payload.profile.horas_mensais = horasStr ? parseInt(horasStr) : null;
+        }
+
         try {
             await window.authManager.apiCall(`/equipe/${employeeId}/`, {
                 method: 'PUT',
@@ -1508,10 +1594,12 @@ class PontoMaxApp {
             });
             this.showToast('Sucesso', 'Alterações salvas com sucesso!', 'success');
             this.closeEmployeeModal();
+
+            // Lógica de atualização da tabela correta
             if (this.currentPage === 'admin') {
-                this.loadAdminSubPage('users'); // Atualiza a tabela do admin
+                this.loadAdminSubPage('users');
             } else {
-                this.loadEquipeData(); // Atualiza a tabela do gestor
+                this.loadEquipeData();
             }
         } catch (error) {
             const errorMessage = error?.email?.[0] || 'Não foi possível salvar as alterações.';
@@ -1548,7 +1636,7 @@ class PontoMaxApp {
 
         if (!periodSelector || !viewButton || !downloadButton) return;
         console.log("Populou")
-        
+
         // Popula o seletor de datas (esta parte continua a mesma)
         if (periodSelector.options.length <= 1) { // Preenche apenas se estiver vazio
             const today = new Date();

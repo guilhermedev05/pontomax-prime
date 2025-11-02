@@ -230,7 +230,8 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.queryset.exclude(pk=self.request.user.pk).exclude(is_superuser=True)
+        # Esta consulta agora retorna APENAS usuários com o perfil 'COLABORADOR'
+        return self.queryset.filter(profile__perfil='COLABORADOR')
     
 class RegistroPontoViewSet(viewsets.ModelViewSet):
     """
@@ -268,53 +269,52 @@ class RegistrosView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # 1. Pega as datas da URL (ex: /api/registros/?start_date=...&end_date=...)
         start_date_str = self.request.query_params.get('start_date')
         end_date_str = self.request.query_params.get('end_date')
 
         if not start_date_str or not end_date_str:
-            return [] # Retorna vazio se as datas não forem fornecidas
+            return []
 
         start_date = date.fromisoformat(start_date_str)
         end_date = date.fromisoformat(end_date_str)
 
-        # 2. Busca todos os registros de ponto do usuário no intervalo
         punches = RegistroPonto.objects.filter(
             user=self.request.user,
             timestamp__date__range=[start_date, end_date]
         ).order_by('timestamp')
-        
+
         justificativas = Justificativa.objects.filter(
             user=self.request.user,
             data_ocorrencia__range=[start_date, end_date]
         )
-        # 2. Cria um dicionário para busca rápida (ex: {'2025-10-14': objeto_justificativa})
         justificativas_map = {j.data_ocorrencia.isoformat(): j for j in justificativas}
 
-        # 3. Processa os registros para calcular os totais diários
         daily_summaries = []
-        # Agrupa os registros por dia
+        
+        # --- LÓGICA DE CÁLCULO DE HORAS CORRIGIDA ---
+        # Substituímos o loop de pares pela lógica de "primeiro/último"
         for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
             punches_in_day = list(punches_in_day_iter)
-            total_seconds = 0
+            worked_hours, overtime, debit = 0, 0, 0 # Valores padrão
+
+            if len(punches_in_day) >= 2:
+                first_punch = punches_in_day[0]
+                last_punch = punches_in_day[-1]
+
+                # Usamos a mesma lógica do GestorDashboardView
+                if first_punch.tipo == 'entrada' and last_punch.tipo == 'saida':
+                    total_seconds = (last_punch.timestamp - first_punch.timestamp).total_seconds()
+                    worked_hours = total_seconds / 3600
+                    
+                    jornada_diaria = self.request.user.profile.jornada_diaria if hasattr(self.request.user, 'profile') else 8.0
+
+                    overtime = max(0, worked_hours - jornada_diaria)
+                    debit = max(0, jornada_diaria - worked_hours) if worked_hours < jornada_diaria else 0
             
-            # Itera sobre os registros do dia em pares (entrada/saída)
-            for i in range(0, len(punches_in_day) - 1, 2):
-                start_punch = punches_in_day[i]
-                end_punch = punches_in_day[i+1]
-                
-                # Validação simples de pares (ex: entrada -> saida_almoco)
-                if 'entrada' in start_punch.tipo and 'saida' in end_punch.tipo:
-                    time_diff = end_punch.timestamp - start_punch.timestamp
-                    total_seconds += time_diff.total_seconds()
-            
-            worked_hours = total_seconds / 3600
-            
-            # Lógica de cálculo de hora extra/débito (assumindo jornada de 8h)
-            jornada_diaria = 8.0
-            overtime = max(0, worked_hours - jornada_diaria)
-            debit = max(0, jornada_diaria - worked_hours) if worked_hours < jornada_diaria else 0
+            # --- FIM DA CORREÇÃO ---
+
             justificativa_do_dia = justificativas_map.get(day.isoformat())
+
             daily_summaries.append({
                 'date': day,
                 'worked': round(worked_hours, 2),
@@ -350,7 +350,7 @@ class BancoHorasEquipeView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        equipe = User.objects.exclude(pk=self.request.user.pk).exclude(is_superuser=True)
+        equipe = User.objects.filter(profile__perfil='COLABORADOR')
         
         # Pega o mês e ano atuais para o cálculo mensal
         hoje = date.today()
@@ -374,6 +374,7 @@ class BancoHorasEquipeView(ListAPIView):
             
         return lista_saldos
 
+# Substitua completamente a sua classe GestorDashboardView por esta:
 class GestorDashboardView(APIView):
     """
     View que compila todos os dados necessários para o dashboard do gestor.
@@ -381,35 +382,65 @@ class GestorDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Métrica 1: Total de usuários (excluindo superusuários)
-        total_users = User.objects.filter(is_superuser=False).count()
-
-        # Métrica 2: Batidas de ponto hoje
-        today = timezone.now().date()
-        punches_today = RegistroPonto.objects.filter(timestamp__date=today).count()
-
-        # Métrica 3: Justificativas pendentes
-        pending_justifications = Justificativa.objects.filter(status='PENDENTE').count()
+        # Usa 'is_superuser=True' que é o filtro correto
+        equipe = User.objects.filter(profile__perfil='COLABORADOR')
+        # Usa 'timezone.localdate()' para fuso horário correto
+        hoje = timezone.localdate()
         
-        # Métrica 4: Dados para o gráfico de novos usuários por mês
-        new_users_chart_data = User.objects.annotate(
-            month=Cast(TruncMonth('date_joined'), output_field=DateField())
-        ).values('month').annotate(count=Count('id')).order_by('month')
-
-        # Métrica 5: Logs recentes (agora como objetos puros)
-        recent_logs = LogAtividade.objects.all()[:5]
+        team_status_list = []
+        usuarios_ativos_hoje = 0
         
-        # Monta o objeto de dados
-        data = {
-            'total_users': total_users,
-            'punches_today': punches_today,
-            'pending_justifications': pending_justifications,
-            'new_users_chart': new_users_chart_data,
-            'recent_logs': recent_logs  # <-- CORREÇÃO: Passamos os objetos, não os .data
+        for funcionario in equipe:
+            punches_today = RegistroPonto.objects.filter(user=funcionario, timestamp__date=hoje).order_by('timestamp')
+            last_punch = punches_today.last()
+            
+            # --- LÓGICA DE CÁLCULO DE HORAS CORRIGIDA ---
+            worked_seconds_today = 0
+            if punches_today.exists() and punches_today.first().tipo == 'entrada':
+                start_time = punches_today.first().timestamp
+                
+                # Se o último registro foi uma saída, calcula o período fechado.
+                # Se foi uma entrada, calcula até o momento atual.
+                end_time = last_punch.timestamp if last_punch.tipo == 'saida' else timezone.now()
+                worked_seconds_today = (end_time - start_time).total_seconds()
+
+            worked_hours_today = worked_seconds_today / 3600
+            
+            # --- LÓGICA DE STATUS SIMPLIFICADA ---
+            status = "Ausente"
+            if last_punch:
+                usuarios_ativos_hoje += 1
+                if last_punch.tipo == 'entrada':
+                    status = "Trabalhando"
+                elif last_punch.tipo == 'saida':
+                    status = "Finalizado"
+
+            team_status_list.append({
+                'name': funcionario.get_full_name(),
+                'initials': "".join([n[0] for n in funcionario.get_full_name().split() if n]), # Adicionado 'if n' para segurança
+                'status': status,
+                'lastPunch': timezone.localtime(last_punch.timestamp).strftime('%H:%M') if last_punch else '--:--',
+                'hoursToday': f"{int(worked_hours_today):02d}h{int((worked_hours_today*60)%60):02d}m"
+            })
+
+        # --- O RESTO DA FUNÇÃO (cálculo de stats e retorno) CONTINUA O MESMO ---
+        equipe_colaboradores = equipe.filter(profile__perfil='COLABORADOR')
+        pendentes_count = Justificativa.objects.filter(status='PENDENTE', user__in=equipe_colaboradores).count()
+
+        stats_data = {
+            'pendentes': pendentes_count,
+            'aniversariantes': 0, 
+            'ativos': usuarios_ativos_hoje,
+            'ausentes': equipe.count() - usuarios_ativos_hoje
         }
 
-        # Serializa e retorna os dados
-        serializer = AdminDashboardSerializer(data)
+        dashboard_data = {
+            'gestorName': request.user.first_name,
+            'stats': stats_data,
+            'teamStatus': team_status_list
+        }
+
+        serializer = GestorDashboardSerializer(instance=dashboard_data)
         return Response(serializer.data)
 class FechamentoViewSet(viewsets.ModelViewSet):
     queryset = Fechamento.objects.all().order_by('-periodo')
@@ -458,7 +489,12 @@ class FechamentoViewSet(viewsets.ModelViewSet):
         fechamento.status = 'GERANDO'
         fechamento.save()
 
-        equipe = User.objects.exclude(is_staff=True)
+        # --- CORREÇÃO APLICADA AQUI ---
+        # ANTES: equipe = User.objects.exclude(is_staff=True)
+        # DEPOIS: Filtramos apenas para COLABORADOR
+        equipe = User.objects.filter(profile__perfil='COLABORADOR')
+        # --- FIM DA CORREÇÃO ---
+
         for funcionario in equipe:
             if hasattr(funcionario, 'profile') and funcionario.profile.salario_base:
                 
@@ -479,8 +515,7 @@ class FechamentoViewSet(viewsets.ModelViewSet):
                     descricao="Salário Base",
                     valor=salario_base
                 )
-                # (Aqui você poderia adicionar lógica para horas extras, etc.)
-
+                
                 # --- Lógica para criar os itens de Desconto (exemplo) ---
                 inss = salario_base * Decimal('0.08') # Exemplo: 8%
                 DescontoGerado.objects.create(
@@ -489,8 +524,7 @@ class FechamentoViewSet(viewsets.ModelViewSet):
                     detalhes="Alíquota 8%",
                     valor=inss
                 )
-                # (Aqui você poderia adicionar lógica para IRRF, vale transporte, etc.)
-
+                
                 # --- Calcula e salva os totais ---
                 total_vencimentos = sum(v.valor for v in holerite_gerado.vencimentos_gerados.all())
                 total_descontos = sum(d.valor for d in holerite_gerado.descontos_gerados.all())
@@ -576,16 +610,20 @@ class GerarRelatorioPontoPDF(APIView):
         start_date = date.fromisoformat(start_date_str)
         end_date = date.fromisoformat(end_date_str)
         
-        # Lógica para buscar e processar os dados (similar à RegistrosView)
         punches = RegistroPonto.objects.filter(
             user=request.user,
             timestamp__date__range=[start_date, end_date]
         ).order_by('timestamp')
 
         daily_summaries = []
-        # Agrupa os registros por dia
+        
+        # --- VARIÁVEIS DE TOTAIS ADICIONADAS AQUI ---
+        total_worked_mins = 0
+        total_overtime_mins = 0
+        total_debit_mins = 0
+        # --- FIM ---
+
         for day, punches_in_day_iter in groupby(punches, key=lambda p: p.timestamp.date()):
-            # ... (Lógica de cálculo de horas - vamos simplificar para o relatório)
             punches_in_day = list(punches_in_day_iter)
             if len(punches_in_day) < 2: continue
 
@@ -600,10 +638,16 @@ class GerarRelatorioPontoPDF(APIView):
             overtime = max(0, worked_hours - jornada_diaria)
             debit = max(0, jornada_diaria - worked_hours) if worked_hours < jornada_diaria else 0
 
-            # Formata as horas para o template
+            # Formata as horas para a tabela
             h_w, m_w = divmod(int(worked_hours * 60), 60)
             h_o, m_o = divmod(int(overtime * 60), 60)
             h_d, m_d = divmod(int(debit * 60), 60)
+
+            # --- SOMA OS TOTAIS EM MINUTOS ---
+            total_worked_mins += (h_w * 60 + m_w)
+            total_overtime_mins += (h_o * 60 + m_o)
+            total_debit_mins += (h_d * 60 + m_d)
+            # --- FIM DA SOMA ---
 
             daily_summaries.append({
                 'date': day,
@@ -612,39 +656,42 @@ class GerarRelatorioPontoPDF(APIView):
                 'debit_formatted': f'-{h_d:02d}h {m_d:02d}m',
             })
 
-        # Calcula os totais
-        total_worked_mins = sum(int(r['worked_formatted'].split('h')[0])*60 + int(r['worked_formatted'].split('h')[1].replace('m','')) for r in daily_summaries)
-        # (Lógica similar para overtime e debit)
+        # --- LÓGICA DE TOTAIS CORRIGIDA ---
         h_tw, m_tw = divmod(total_worked_mins, 60)
+        h_to, m_to = divmod(total_overtime_mins, 60)
+        h_td, m_td = divmod(total_debit_mins, 60)
+
+        totais_formatados = {
+            'worked': f'{h_tw:02d}h {m_tw:02d}m',
+            'overtime': f'+{h_to:02d}h {m_to:02d}m', # <-- Corrigido
+            'debit': f'-{h_td:02d}h {m_td:02d}m'   # <-- Corrigido
+        }
+        # --- FIM DA CORREÇÃO ---
 
         logo_base64 = ''
         try:
-            # Constrói o caminho para o arquivo da logo na sua pasta 'static'
             logo_path = os.path.join(settings.STATICFILES_DIRS[0], 'assets/images/logo.svg')
             with open(logo_path, 'rb') as logo_file:
                 logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
         except (FileNotFoundError, IndexError):
             print("AVISO: Arquivo de logo não encontrado ou STATICFILES_DIRS não configurado.")
-            # O PDF será gerado sem a logo se não for encontrada
 
         context = {
             'user_name': request.user.get_full_name(),
             'periodo': f'{start_date.strftime("%d/%m/%Y")} a {end_date.strftime("%d/%m/%Y")}',
             'registros': daily_summaries,
-            'totais': { 'worked': f'{h_tw:02d}h {m_tw:02d}m', 'overtime': '...', 'debit': '...' }, # Simplificado
-            'logo_data_uri': f'data:image/svg+xml;base64,{logo_base64}' # <-- Nova variável para o template
+            'totais': totais_formatados, # <-- Usa os totais corrigidos
+            'logo_data_uri': f'data:image/svg+xml;base64,{logo_base64}'
         }
         
-        # Renderiza o HTML e cria o PDF
         html_string = render_to_string('reports/relatorio_ponto.html', context)
-        pdf_file = HTML(string=html_string).write_pdf()
+        # Passamos o base_url para o WeasyPrint encontrar o CSS se necessário
+        pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
 
-        # Cria a resposta HTTP
         response = HttpResponse(pdf_file, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="relatorio_ponto_{request.user.username}_{start_date_str}.pdf"'
         
         return response
-
 class GerarHoleritePDF(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -834,6 +881,14 @@ class ChangePasswordView(generics.UpdateAPIView):
 
         if serializer.is_valid():
             serializer.save()
+            
+            # --- LÓGICA ADICIONADA AQUI ---
+            # Se o usuário estava com a flag, a removemos.
+            if self.object.profile.must_change_password:
+                self.object.profile.must_change_password = False
+                self.object.profile.save()
+            # --- FIM DA LÓGICA ---
+
             return Response({"detail": "Senha alterada com sucesso."}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

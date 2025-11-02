@@ -23,6 +23,7 @@ class Profile(models.Model):
     horas_mensais = models.PositiveIntegerField(null=True, blank=True)
     jornada_diaria = models.PositiveIntegerField(default=8, help_text="Jornada diária em horas")
     
+    must_change_password = models.BooleanField(default=True, help_text="Indica se o usuário deve trocar a senha no próximo login")
     def __str__(self):
         return f"{self.user.username} - {self.perfil}"
     

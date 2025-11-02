@@ -40,11 +40,11 @@ class HoleriteSerializer(serializers.ModelSerializer):
 
 # --- Serializers para Usuário/Equipe (VERSÃO CORRIGIDA) ---
 
-# 1. CRIAMOS UM SERIALIZER ESPECÍFICO PARA O PERFIL
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['perfil', 'salario_base', 'horas_mensais', 'jornada_diaria']
+        # ADICIONE 'must_change_password' À LISTA:
+        fields = ['perfil', 'salario_base', 'horas_mensais', 'jornada_diaria', 'must_change_password']
 
 
 # 2. SIMPLIFICAMOS O USERSERIALIZER PARA USAR O PROFILESERIALIZER
