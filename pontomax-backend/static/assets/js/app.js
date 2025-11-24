@@ -162,10 +162,7 @@ class PontoMaxApp {
         }
 
         // Botão de registrar ponto
-        const punchBtn = document.getElementById('punch-btn');
-        if (punchBtn) {
-            punchBtn.addEventListener('click', () => this.handlePunchClock());
-        }
+        
 
         const payslipPeriodSelector = document.getElementById('payslip-period');
         if (payslipPeriodSelector) {
@@ -1104,19 +1101,6 @@ class PontoMaxApp {
 
         updateTime();
         setInterval(updateTime, 1000);
-    }
-
-    handlePunchClock() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
-        this.showToast('Ponto Registrado', `Ponto registrado às ${timeString}`, 'success');
-
-        // Em produção, enviar para API Django
-        console.log('Registrando ponto:', timeString);
     }
 
     showToast(title, message, type = 'info', onclose = null) {

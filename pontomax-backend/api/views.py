@@ -216,23 +216,31 @@ class UserProfileView(APIView):
 
 class UserViewSet(viewsets.ModelViewSet):
     """
-    ViewSet completo para as operações CRUD (Criar, Ler, Atualizar, Deletar)
-    de funcionários da equipe.
-    Acessível via:
-    - GET /api/equipe/ (Listar todos)
-    - POST /api/equipe/ (Criar novo)
-    - GET /api/equipe/<id>/ (Ver detalhes)
-    - PUT /api/equipe/<id>/ (Atualizar)
-    - DELETE /api/equipe/<id>/ (Deletar)
+    ViewSet completo para as operações CRUD de funcionários.
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Esta consulta agora retorna APENAS usuários com o perfil 'COLABORADOR'
-        return self.queryset.filter(profile__perfil='COLABORADOR')
-    
+        # Remove o próprio usuário logado e superusuários da lista base
+        queryset = self.queryset.exclude(pk=self.request.user.pk).exclude(is_superuser=True)
+        
+        user = self.request.user
+        
+        # Lógica condicional baseada no perfil
+        if hasattr(user, 'profile'):
+            if user.profile.perfil == 'GESTOR':
+                # Gestor só vê COLABORADOR
+                return queryset.filter(profile__perfil='COLABORADOR')
+            
+            if user.profile.perfil == 'ADMIN':
+                # Admin vê TODOS (Colaborador, Gestor, Admin)
+                return queryset
+
+        # Fallback para outros casos (retorna vazio ou padrão)
+        return queryset.none()
+       
 class RegistroPontoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para listar e criar registros de ponto para o usuário logado.

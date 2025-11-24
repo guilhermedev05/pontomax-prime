@@ -31,9 +31,12 @@ class Profile(models.Model):
     def create_user_profile(sender, instance, created, **kwargs):
         """
         Cria um Profile automaticamente sempre que um novo User é criado.
+        Se for superusuário, define como ADMIN.
         """
         if created:
-            Profile.objects.create(user=instance)
+            perfil_inicial = Profile.UserProfile.ADMIN if instance.is_superuser else Profile.UserProfile.COLABORADOR
+            
+            Profile.objects.create(user=instance, perfil=perfil_inicial)
             
 class Holerite(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='holerites')
